@@ -5,6 +5,12 @@ import { ErrorMessages } from "./ErrorMessages";
 import { AppError } from "./AppError";
 import { logger } from "../../utils/logger";
 
+declare module 'express' {
+  interface Request {
+    correlationId?: string;
+  }
+}
+
 interface ResponseMethods {
     successResponse(httpCode: StatusCodes, data: object): void;
     errorResponse(httpCode: StatusCodes, errCode: ErrorCode, data: object): void;
@@ -58,7 +64,7 @@ export class CustomExpress implements ResponseMethods {
             url: this.req.url,
             method: this.req.method,
             userAgent: this.req.get('User-Agent'),
-            ip: this.req.ip || this.req.connection.remoteAddress,
+            ip: this.req.ip || this.req.socket.remoteAddress,
             correlationId: this.req.correlationId
         };
 

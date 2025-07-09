@@ -4,6 +4,12 @@ import { AppError } from './e/AppError';
 import { ErrorCode } from './e/ErrorCode';
 import { CustomExpress } from './e/CustomExpress';
 
+declare module 'express' {
+  interface Request {
+    correlationId?: string;
+  }
+}
+
 export const errorHandler = (
   error: Error | AppError,
   req: Request,
@@ -21,7 +27,7 @@ export const errorHandler = (
       url: req.url,
       method: req.method,
       userAgent: req.get('User-Agent'),
-      ip: req.ip || req.connection.remoteAddress,
+      ip: req.ip || req.socket.remoteAddress,
       correlationId: req.correlationId
     });
 
@@ -35,7 +41,7 @@ export const errorHandler = (
     url: req.url,
     method: req.method,
     userAgent: req.get('User-Agent'),
-    ip: req.ip || req.connection.remoteAddress,
+    ip: req.ip || req.socket.remoteAddress,
     correlationId: req.correlationId,
     ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
   };

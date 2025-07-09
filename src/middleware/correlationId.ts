@@ -1,14 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 
-declare global {
-  namespace Express {
-    interface Request {
-      correlationId?: string;
-    }
-  }
-}
-
 export const correlationIdMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   // Generate or extract correlation ID
   const correlationId = req.headers['x-correlation-id'] as string || randomUUID();

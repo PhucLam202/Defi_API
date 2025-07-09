@@ -25,6 +25,9 @@
       "@/middleware/*": ["./middleware/*"]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests"]
+  "include": ["src/**/*", "src/types/**/*"],
+  "exclude": ["node_modules", "dist", "tests"],
+  "ts-node": {
+    "files": true
+  }
 }
