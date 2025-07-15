@@ -1,20 +1,37 @@
-import express from 'express';
+import express,{Express} from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
-import swaggerUi from 'swagger-ui-express';
+import helmet from 'helmet';
+import { apiReference } from '@scalar/express-api-reference';
 import { config } from './config';
-import { logger } from './utils/logger';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { specs } from './config/swagger.config';
 import v1Routes from './routes/v1';
-import { swaggerSpec } from './docs/swagger';
 
-const app = express();
+const app:Express = express();
 
 // Security middleware
-app.use(helmet());
-app.use(cors());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
+}));
+
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' ? false : true,
+  credentials: false
+}));
 
 // Compression
 app.use(compression());
@@ -30,83 +47,31 @@ if (config.nodeEnv === 'development') {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Swagger documentation
-const swaggerOptions = {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'DeFi Data API Documentation',
-  customfavIcon: '/favicon.ico',
-  swaggerOptions: {
-    persistAuthorization: true,
-    displayRequestDuration: true,
-    docExpansion: 'tag',
-    filter: true,
-    showExtensions: true,
-    showCommonExtensions: true,
-    tryItOutEnabled: true,
-  },
-};
-
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerOptions));
-
-// Swagger JSON endpoint
-app.get('/api-docs.json', (_req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
+// Serve OpenAPI spec as JSON
+app.get("/api-docs/swagger.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(specs);
 });
 
-// API routes
-app.use(`/api/${config.apiVersion}`, v1Routes);
+// Serve Scalar API documentation
+app.use('/docs', apiReference({
+  spec: {
+    content: specs,
+  },
+}));
 
-/**
- * @swagger
- * /:
- *   get:
- *     summary: API root endpoint
- *     tags: [Health]
- *     description: Returns basic API information and links to documentation
- *     responses:
- *       200:
- *         description: API information
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/ApiResponse'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       type: object
- *                       properties:
- *                         message:
- *                           type: string
- *                           example: 'DeFi Data API'
- *                         version:
- *                           type: string
- *                           example: 'v1'
- *                         documentation:
- *                           type: string
- *                           example: '/api-docs'
- *             example:
- *               success: true
- *               data:
- *                 message: 'DeFi Data API'
- *                 version: 'v1'
- *                 documentation: '/api-docs'
- *               timestamp: '2023-10-20T10:30:00.000Z'
- */
-app.get('/', (_req, res) => {
+// Root endpoint
+app.get("/", (req, res) => {
   res.json({
-    success: true,
-    data: {
-      message: 'DeFi Data API',
-      version: config.apiVersion,
-      documentation: '/api-docs'
-    },
-    timestamp: new Date().toISOString()
+    message: "API Server is running!",
+    documentation: `${req.protocol}://${req.get("host")}/docs`,
   });
 });
 
-// Error handling
+// API Routes
+app.use('/api/v1', v1Routes);
+
+// Error handling (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
 
