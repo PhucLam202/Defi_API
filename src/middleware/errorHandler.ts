@@ -35,9 +35,9 @@ export const errorHandler = (
     return;
   }
 
-  // Log detailed error information for debugging (only in development)
-  const logData = {
-    error: error.message,
+  // Sanitize error details for logging
+  const sanitizedError = {
+    error: sanitizeErrorMessage(error.message),
     url: req.url,
     method: req.method,
     userAgent: req.get('User-Agent'),
@@ -46,12 +46,12 @@ export const errorHandler = (
     ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
   };
 
-  logger.error('Unhandled error', logData);
+  logger.error('Unhandled error', sanitizedError);
 
   // In production, provide generic error message to prevent information leakage
   const errorMessage = process.env.NODE_ENV === 'production' 
     ? 'An unexpected error occurred' 
-    : 'Internal server error';
+    : sanitizeErrorMessage(error.message);
 
   customExpress.response500(ErrorCode.UNKNOWN_ERROR, {
     message: errorMessage,
@@ -69,3 +69,37 @@ export const notFoundHandler = (req: Request, res: Response): void => {
     timestamp: new Date().toISOString()
   });
 };
+
+function sanitizeErrorMessage(message: string): string {
+  // Remove sensitive patterns that might leak information
+  const sensitivePatterns = [
+    /\/[A-Za-z]:\/.*$/g,  // Windows paths
+    /\/[^\/\s]+\/[^\/\s]+/g,  // Unix paths
+    /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g,  // IP addresses
+    /localhost:\d+/g,  // localhost with port
+    /password/gi,  // Password references
+    /secret/gi,  // Secret references
+    /token/gi,  // Token references
+    /key/gi,  // Key references
+    /database/gi,  // Database references
+    /sql/gi,  // SQL references
+    /mongodb/gi,  // MongoDB references
+    /redis/gi,  // Redis references
+    /ECONNREFUSED/gi,  // Connection errors
+    /ENOTFOUND/gi,  // DNS errors
+    /ETIMEDOUT/gi,  // Timeout errors
+  ];
+
+  let sanitized = message;
+  
+  sensitivePatterns.forEach(pattern => {
+    sanitized = sanitized.replace(pattern, '[REDACTED]');
+  });
+
+  // Limit message length
+  if (sanitized.length > 200) {
+    sanitized = sanitized.substring(0, 200) + '...';
+  }
+
+  return sanitized;
+}

@@ -34,6 +34,93 @@ class StablecoinService {
     return this.cache.get(cacheKey)?.data;
   }
 
+  private sanitizeApiResponse(data: any): DeFiLlamaStablecoinResponse {
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid API response format');
+    }
+
+    // Ensure peggedAssets is an array
+    if (!Array.isArray(data.peggedAssets)) {
+      throw new Error('Invalid peggedAssets format');
+    }
+
+    // Sanitize each asset
+    const sanitizedAssets = data.peggedAssets.map((asset: any): any => {
+      if (!asset || typeof asset !== 'object') {
+        return null;
+      }
+
+      // Validate required fields
+      if (!asset.id || !asset.name || !asset.symbol) {
+        return null;
+      }
+
+      return {
+        id: String(asset.id).substring(0, 100),
+        name: String(asset.name).substring(0, 200),
+        symbol: String(asset.symbol).substring(0, 20),
+        gecko_id: asset.gecko_id ? String(asset.gecko_id).substring(0, 100) : undefined,
+        pegType: String(asset.pegType || 'unknown').substring(0, 50),
+        pegMechanism: String(asset.pegMechanism || 'unknown').substring(0, 50),
+        priceSource: asset.priceSource ? String(asset.priceSource).substring(0, 100) : undefined,
+        circulating: {
+          peggedUSD: Math.max(0, parseFloat(asset.circulating?.peggedUSD || '0') || 0)
+        },
+        circulatingPrevDay: asset.circulatingPrevDay ? {
+          peggedUSD: Math.max(0, parseFloat(asset.circulatingPrevDay.peggedUSD || '0') || 0)
+        } : undefined,
+        circulatingPrevWeek: asset.circulatingPrevWeek ? {
+          peggedUSD: Math.max(0, parseFloat(asset.circulatingPrevWeek.peggedUSD || '0') || 0)
+        } : undefined,
+        circulatingPrevMonth: asset.circulatingPrevMonth ? {
+          peggedUSD: Math.max(0, parseFloat(asset.circulatingPrevMonth.peggedUSD || '0') || 0)
+        } : undefined,
+        chainCirculating: this.sanitizeChainCirculating(asset.chainCirculating),
+        chains: Array.isArray(asset.chains) 
+          ? asset.chains.filter((chain: any) => typeof chain === 'string').slice(0, 20)
+          : [],
+        price: Math.max(0, parseFloat(asset.price || '0') || 0)
+      };
+    }).filter((asset: any) => asset !== null);
+
+    return {
+      peggedAssets: sanitizedAssets
+    };
+  }
+
+  private sanitizeChainCirculating(chainData: any): any {
+    if (!chainData || typeof chainData !== 'object') {
+      return {};
+    }
+
+    const sanitized: any = {};
+    
+    // Limit to 50 chains to prevent memory issues
+    const chainKeys = Object.keys(chainData).slice(0, 50);
+    
+    for (const chainName of chainKeys) {
+      const chain = chainData[chainName];
+      if (chain && typeof chain === 'object') {
+        sanitized[chainName] = {
+          current: {
+            peggedUSD: Math.max(0, parseFloat(chain.current?.peggedUSD || '0') || 0)
+          },
+          circulatingPrevDay: chain.circulatingPrevDay ? {
+            peggedUSD: Math.max(0, parseFloat(chain.circulatingPrevDay.peggedUSD || '0') || 0)
+          } : undefined,
+          circulatingPrevWeek: chain.circulatingPrevWeek ? {
+            peggedUSD: Math.max(0, parseFloat(chain.circulatingPrevWeek.peggedUSD || '0') || 0)
+          } : undefined,
+          circulatingPrevMonth: chain.circulatingPrevMonth ? {
+            peggedUSD: Math.max(0, parseFloat(chain.circulatingPrevMonth.peggedUSD || '0') || 0)
+          } : undefined,
+        };
+      }
+    }
+
+    return sanitized;
+  }
+
   async fetchStablecoinsData(): Promise<DeFiLlamaStablecoinResponse> {
     const cacheKey = 'stablecoins-data';
     
@@ -44,18 +131,55 @@ class StablecoinService {
 
     try {
       logger.info('Fetching fresh data from DeFiLlama stablecoins API');
-      const response = await axios.get(`${this.baseUrl}/stablecoins?includePrices=true`, {
-        timeout: 15000,
+      
+      // Enhanced security for external API calls
+      const response = await axios.get(`${this.baseUrl}/stablecoins`, {
+        timeout: 10000, // Reduced timeout to prevent resource exhaustion
+        maxRedirects: 3, // Limit redirects to prevent redirect loops
+        maxContentLength: 10 * 1024 * 1024, // 10MB limit
+        maxBodyLength: 10 * 1024 * 1024, // 10MB limit
+        validateStatus: (status) => status >= 200 && status < 300, // Only accept 2xx status codes
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'DeFi-Data-API/1.0'
-        }
+          'User-Agent': 'DeFi-Data-API/1.0.0',
+          'Accept-Encoding': 'gzip, deflate',
+          'Cache-Control': 'no-cache',
+          'Connection': 'close'
+        },
+        params: {
+          includePrices: 'true'
+        },
+        // Enhanced security options
+        httpsAgent: new (require('https').Agent)({
+          rejectUnauthorized: true, // Validate SSL certificates
+          secureProtocol: 'TLSv1_2_method', // Use TLS 1.2 minimum
+          ciphers: 'HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA' // Strong ciphers only
+        })
       });
 
-      this.setCache(cacheKey, response.data);
-      return response.data;
+      // Validate response structure
+      if (!response.data || !response.data.peggedAssets || !Array.isArray(response.data.peggedAssets)) {
+        throw new Error('Invalid response structure from DeFiLlama API');
+      }
+
+      // Sanitize response data
+      const sanitizedData = this.sanitizeApiResponse(response.data);
+      
+      this.setCache(cacheKey, sanitizedData);
+      return sanitizedData;
     } catch (error) {
-      logger.error('Failed to fetch stablecoin data', { error: (error as Error).message });
+      logger.error('Failed to fetch stablecoin data', { 
+        error: (error as Error).message,
+        url: `${this.baseUrl}/stablecoins`,
+        timeout: 10000
+      });
+      
+      // Return cached data if available as fallback
+      if (this.cache.has(cacheKey)) {
+        logger.warn('Returning stale cached data due to API failure');
+        return this.getCache(cacheKey);
+      }
+      
       throw AppError.newRootError502(ErrorCode.AI_SERVICE_UNAVAILABLE, 'DeFiLlama API unavailable', error as Error);
     }
   }
@@ -148,14 +272,36 @@ class StablecoinService {
     }
 
     // Apply sorting
-    const sortBy = filters.sortBy || 'marketCap';
-    const sortOrder = filters.sortOrder || 'desc';
+    const sortBy = filters.sortBy || 'id';
+    const sortOrder = filters.sortOrder || 'asc';
     
     stablecoins.sort((a, b) => {
       let valueA: number;
       let valueB: number;
       
       switch (sortBy) {
+        case 'id':
+          // Smart ID comparison: numeric IDs sorted numerically, non-numeric alphabetically
+          const aIsNumeric = /^\d+$/.test(a.id);
+          const bIsNumeric = /^\d+$/.test(b.id);
+          
+          if (aIsNumeric && bIsNumeric) {
+            // Both are numeric, sort as numbers
+            const aNum = parseInt(a.id, 10);
+            const bNum = parseInt(b.id, 10);
+            return sortOrder === 'asc' ? aNum - bNum : bNum - aNum;
+          } else if (aIsNumeric && !bIsNumeric) {
+            // Numeric IDs come first
+            return sortOrder === 'asc' ? -1 : 1;
+          } else if (!aIsNumeric && bIsNumeric) {
+            // Numeric IDs come first
+            return sortOrder === 'asc' ? 1 : -1;
+          } else {
+            // Both are non-numeric, sort alphabetically
+            return sortOrder === 'asc' 
+              ? a.id.localeCompare(b.id)
+              : b.id.localeCompare(a.id);
+          }
         case 'stability':
           valueA = a.pegStability;
           valueB = b.pegStability;

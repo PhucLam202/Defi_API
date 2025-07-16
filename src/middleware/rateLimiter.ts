@@ -31,7 +31,20 @@ class RateLimiter {
   }
   
   private getKey(req: Request): string {
-    return req.ip || req.connection.remoteAddress || 'unknown';
+    // Use multiple factors for more secure rate limiting
+    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    const userAgent = req.get('User-Agent') || 'unknown';
+    const xForwardedFor = req.get('X-Forwarded-For') || '';
+    
+    // Create a composite key
+    const baseKey = `${ip}:${userAgent.substring(0, 50)}`;
+    
+    // If behind proxy, include X-Forwarded-For
+    if (xForwardedFor) {
+      return `${baseKey}:${xForwardedFor.split(',')[0].trim()}`;
+    }
+    
+    return baseKey;
   }
   
   check(req: Request): boolean {
@@ -91,22 +104,58 @@ const strictLimiter = new RateLimiter(60000, 20);   // 20 requests per minute fo
 export const rateLimitMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const limiter = generalLimiter;
   
-  if (!limiter.check(req)) {
-    const resetTime = limiter.getResetTime(req);
-    const retryAfter = Math.ceil((resetTime - Date.now()) / 1000);
-    
-    res.setHeader('Retry-After', retryAfter);
-    res.setHeader('X-RateLimit-Limit', '100');
-    res.setHeader('X-RateLimit-Remaining', '0');
-    res.setHeader('X-RateLimit-Reset', resetTime);
-    
-    throw AppError.newError429(ErrorCode.RATE_LIMITED, 'Rate limit exceeded. Please try again later.');
-  }
+  // Check for suspicious user agents
+  const userAgent = req.get('User-Agent') || '';
+  const suspiciousPatterns = [
+    /bot/i, /crawler/i, /spider/i, /scraper/i, /curl/i, /wget/i, /python/i, /http/i
+  ];
   
-  // Add rate limit headers to response
-  res.setHeader('X-RateLimit-Limit', '100');
-  res.setHeader('X-RateLimit-Remaining', limiter.getRemainingRequests(req));
-  res.setHeader('X-RateLimit-Reset', limiter.getResetTime(req));
+  const isSuspicious = suspiciousPatterns.some(pattern => pattern.test(userAgent));
+  
+  if (isSuspicious) {
+    logger.warn('Suspicious user agent detected', {
+      userAgent,
+      ip: req.ip,
+      url: req.url,
+      method: req.method
+    });
+    
+    // Apply stricter rate limiting for suspicious requests
+    if (!strictLimiter.check(req)) {
+      const resetTime = strictLimiter.getResetTime(req);
+      const retryAfter = Math.ceil((resetTime - Date.now()) / 1000);
+      
+      res.setHeader('Retry-After', retryAfter);
+      res.setHeader('X-RateLimit-Limit', '20');
+      res.setHeader('X-RateLimit-Remaining', '0');
+      res.setHeader('X-RateLimit-Reset', resetTime);
+      
+      throw AppError.newError429(ErrorCode.RATE_LIMITED, 'Rate limit exceeded. Please try again later.');
+    }
+    
+    // Add rate limit headers for suspicious requests
+    res.setHeader('X-RateLimit-Limit', '20');
+    res.setHeader('X-RateLimit-Remaining', strictLimiter.getRemainingRequests(req));
+    res.setHeader('X-RateLimit-Reset', strictLimiter.getResetTime(req));
+  } else {
+    // Normal rate limiting
+    if (!limiter.check(req)) {
+      const resetTime = limiter.getResetTime(req);
+      const retryAfter = Math.ceil((resetTime - Date.now()) / 1000);
+      
+      res.setHeader('Retry-After', retryAfter);
+      res.setHeader('X-RateLimit-Limit', '100');
+      res.setHeader('X-RateLimit-Remaining', '0');
+      res.setHeader('X-RateLimit-Reset', resetTime);
+      
+      throw AppError.newError429(ErrorCode.RATE_LIMITED, 'Rate limit exceeded. Please try again later.');
+    }
+    
+    // Add rate limit headers to response
+    res.setHeader('X-RateLimit-Limit', '100');
+    res.setHeader('X-RateLimit-Remaining', limiter.getRemainingRequests(req));
+    res.setHeader('X-RateLimit-Reset', limiter.getResetTime(req));
+  }
   
   next();
 };

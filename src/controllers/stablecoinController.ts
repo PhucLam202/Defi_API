@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { stablecoinService } from '../services/stablecoinService';
-import { ApiResponse, StablecoinAsset, StablecoinFilters, StablecoinAnalytics } from '../types';
+import { ApiResponse, StablecoinAsset, StablecoinFilters, StablecoinAnalytics, ChainStablecoinResponse } from '../types';
 import { AppError } from '../middleware/e/AppError';
 import { ErrorCode } from '../middleware/e/ErrorCode';
+import { InputValidator } from '../utils/inputValidator';
 
 export class StablecoinController {
   
@@ -117,61 +118,57 @@ export class StablecoinController {
         mechanism, 
         minMarketCap, 
         chain, 
-        sortBy = 'marketCap', 
-        sortOrder = 'desc',
+        sortBy = 'id', 
+        sortOrder = 'asc',
         includeChainData = 'false',
         limit = '50',
         offset = '0'
       } = req.query;
       
-      // Input validation
-      const validSortOptions = ['marketCap', 'stability', 'growth', 'name'];
-      if (sortBy && !validSortOptions.includes(sortBy as string)) {
-        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid sortBy parameter. Must be "marketCap", "stability", "growth", or "name"');
+      // Enhanced input validation and sanitization
+      const validatedSortBy = InputValidator.validateSortBy(sortBy as string);
+      const validatedSortOrder = InputValidator.validateSortOrder(sortOrder as string);
+      const validatedIncludeChainData = InputValidator.validateBoolean(includeChainData as string);
+      const validatedLimit = InputValidator.validateInteger(limit as string, 'limit', 1, 100);
+      const validatedOffset = InputValidator.validateInteger(offset as string, 'offset', 0);
+      
+      // Validate and sanitize optional parameters
+      let validatedPegType: string | undefined;
+      if (pegType) {
+        validatedPegType = InputValidator.validatePegType(pegType as string);
       }
-
-      const validSortOrders = ['asc', 'desc'];
-      if (sortOrder && !validSortOrders.includes(sortOrder as string)) {
-        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid sortOrder parameter. Must be "asc" or "desc"');
+      
+      let validatedMechanism: string | undefined;
+      if (mechanism) {
+        validatedMechanism = InputValidator.validateMechanism(mechanism as string);
       }
-
-      // Validate and parse minMarketCap
-      let minMarketCapNum: number | undefined;
+      
+      let validatedMinMarketCap: number | undefined;
       if (minMarketCap) {
-        minMarketCapNum = parseFloat(minMarketCap as string);
-        if (isNaN(minMarketCapNum) || minMarketCapNum < 0) {
-          throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid minMarketCap parameter. Must be a positive number');
-        }
+        validatedMinMarketCap = InputValidator.validatePositiveNumber(minMarketCap as string, 'minMarketCap');
       }
-
-      // Validate and parse limit
-      const limitNum = parseInt(limit as string);
-      if (isNaN(limitNum) || limitNum <= 0 || limitNum > 100) {
-        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid limit parameter. Must be between 1 and 100');
-      }
-
-      // Validate and parse offset
-      const offsetNum = parseInt(offset as string);
-      if (isNaN(offsetNum) || offsetNum < 0) {
-        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid offset parameter. Must be a non-negative number');
+      
+      let validatedChain: string | undefined;
+      if (chain) {
+        validatedChain = InputValidator.sanitizeChainName(chain as string);
       }
 
       const filters: StablecoinFilters = {
-        pegType: pegType as string,
-        mechanism: mechanism as string,
-        minMarketCap: minMarketCapNum,
-        chain: chain as string,
-        sortBy: sortBy as 'marketCap' | 'stability' | 'growth' | 'name',
-        sortOrder: sortOrder as 'asc' | 'desc',
-        includeChainData: includeChainData === 'true',
-        limit: limitNum,
-        offset: offsetNum
+        pegType: validatedPegType,
+        mechanism: validatedMechanism,
+        minMarketCap: validatedMinMarketCap,
+        chain: validatedChain,
+        sortBy: validatedSortBy,
+        sortOrder: validatedSortOrder,
+        includeChainData: validatedIncludeChainData,
+        limit: validatedLimit,
+        offset: validatedOffset
       };
 
       const stablecoins = await stablecoinService.getStablecoins(filters);
 
       // Remove chain circulating data if not requested
-      const responseData = filters.includeChainData 
+      const responseData = validatedIncludeChainData
         ? stablecoins 
         : stablecoins.map(({ chainCirculating, ...rest }) => rest);
 
@@ -179,8 +176,8 @@ export class StablecoinController {
         success: true,
         data: responseData,
         pagination: {
-          page: Math.floor(offsetNum / limitNum) + 1,
-          limit: limitNum,
+          page: Math.floor(validatedOffset / validatedLimit) + 1,
+          limit: validatedLimit,
           total: stablecoins.length
         },
         timestamp: new Date().toISOString()
@@ -196,18 +193,10 @@ export class StablecoinController {
     try {
       const { symbol } = req.params;
       
-      // Input validation
-      if (!symbol || symbol.trim() === '') {
-        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Symbol parameter is required');
-      }
+      // Enhanced input validation and sanitization
+      const validatedSymbol = InputValidator.sanitizeAlphanumeric(symbol, 20);
       
-      // Sanitize symbol input
-      const sanitizedSymbol = symbol.replace(/[^a-zA-Z0-9]/g, '').substring(0, 20);
-      if (sanitizedSymbol.length === 0) {
-        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid symbol format');
-      }
-      
-      const stablecoin = await stablecoinService.getStablecoinBySymbol(sanitizedSymbol);
+      const stablecoin = await stablecoinService.getStablecoinBySymbol(validatedSymbol);
 
       if (!stablecoin) {
         throw AppError.newError404(ErrorCode.NOT_FOUND, `Stablecoin with symbol ${symbol} not found`);
@@ -229,18 +218,10 @@ export class StablecoinController {
     try {
       const { id } = req.params;
       
-      // Input validation
-      if (!id || id.trim() === '') {
-        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'ID parameter is required');
-      }
+      // Enhanced input validation and sanitization
+      const validatedId = InputValidator.sanitizeAlphanumeric(id, 50);
       
-      // Sanitize ID input
-      const sanitizedId = id.replace(/[^a-zA-Z0-9]/g, '').substring(0, 20);
-      if (sanitizedId.length === 0) {
-        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid ID format');
-      }
-      
-      const stablecoin = await stablecoinService.getStablecoinById(sanitizedId);
+      const stablecoin = await stablecoinService.getStablecoinById(validatedId);
 
       if (!stablecoin) {
         throw AppError.newError404(ErrorCode.NOT_FOUND, `Stablecoin with ID ${id} not found`);
@@ -262,22 +243,53 @@ export class StablecoinController {
     try {
       const { chain } = req.params;
       
-      // Input validation
-      if (!chain || chain.trim() === '') {
-        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Chain parameter is required');
-      }
+      // Enhanced input validation and sanitization
+      const validatedChain = InputValidator.sanitizeChainName(chain);
       
-      // Sanitize chain input
-      const sanitizedChain = chain.replace(/[^a-zA-Z0-9\s]/g, '').substring(0, 50);
-      if (sanitizedChain.length === 0) {
-        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid chain format');
-      }
-      
-      const stablecoins = await stablecoinService.getStablecoinsByChain(sanitizedChain);
+      const stablecoins = await stablecoinService.getStablecoinsByChain(validatedChain);
 
-      const response: ApiResponse<StablecoinAsset[]> = {
+      // Calculate chain-specific metrics
+      const totalCirculation = stablecoins.reduce((sum, stablecoin) => {
+        // Get circulation for this specific chain if available
+        const chainData = stablecoin.chainCirculating[validatedChain] || 
+                         stablecoin.chainCirculating[chain.toLowerCase()] ||
+                         stablecoin.chainCirculating[Object.keys(stablecoin.chainCirculating).find(key => 
+                           key.toLowerCase().includes(validatedChain.toLowerCase())
+                         ) || ''];
+        
+        return sum + (chainData?.current?.peggedUSD || 0);
+      }, 0);
+
+      // Transform stablecoins to chain-focused format
+      const chainStablecoins = stablecoins.map(stablecoin => {
+        const chainData = stablecoin.chainCirculating[validatedChain] || 
+                         stablecoin.chainCirculating[chain.toLowerCase()] ||
+                         stablecoin.chainCirculating[Object.keys(stablecoin.chainCirculating).find(key => 
+                           key.toLowerCase().includes(validatedChain.toLowerCase())
+                         ) || ''];
+
+        return {
+          id: stablecoin.id,
+          name: stablecoin.name,
+          symbol: stablecoin.symbol,
+          marketCap: stablecoin.marketCap,
+          circulation: chainData?.current?.peggedUSD || 0,
+          price: stablecoin.price,
+          pegStability: stablecoin.pegStability,
+          riskLevel: stablecoin.riskLevel
+        };
+      }).sort((a, b) => b.circulation - a.circulation); // Sort by circulation on this chain
+
+      const chainResponse: ChainStablecoinResponse = {
+        chain: chain,
+        totalStablecoins: stablecoins.length,
+        totalCirculation: totalCirculation,
+        stablecoins: chainStablecoins
+      };
+
+      const response: ApiResponse<ChainStablecoinResponse> = {
         success: true,
-        data: stablecoins,
+        data: chainResponse,
         pagination: {
           page: 1,
           limit: stablecoins.length,
@@ -312,16 +324,13 @@ export class StablecoinController {
     try {
       const { limit = '10' } = req.query;
       
-      // Validate limit
-      const limitNum = parseInt(limit as string);
-      if (isNaN(limitNum) || limitNum <= 0 || limitNum > 50) {
-        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid limit parameter. Must be between 1 and 50');
-      }
+      // Enhanced input validation
+      const validatedLimit = InputValidator.validateInteger(limit as string, 'limit', 1, 50);
 
       const filters: StablecoinFilters = {
         sortBy: 'marketCap',
         sortOrder: 'desc',
-        limit: limitNum,
+        limit: validatedLimit,
         offset: 0
       };
 
@@ -335,7 +344,7 @@ export class StablecoinController {
         data: responseData,
         pagination: {
           page: 1,
-          limit: limitNum,
+          limit: validatedLimit,
           total: responseData.length
         },
         timestamp: new Date().toISOString()
@@ -351,14 +360,11 @@ export class StablecoinController {
     try {
       const { threshold = '99' } = req.query;
       
-      // Validate threshold
-      const thresholdNum = parseFloat(threshold as string);
-      if (isNaN(thresholdNum) || thresholdNum < 0 || thresholdNum > 100) {
-        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid threshold parameter. Must be between 0 and 100');
-      }
+      // Enhanced input validation
+      const validatedThreshold = InputValidator.validateThreshold(threshold as string);
 
       const allStablecoins = await stablecoinService.getStablecoins({ limit: 1000 });
-      const depeggedStablecoins = allStablecoins.filter(s => s.pegStability < thresholdNum);
+      const depeggedStablecoins = allStablecoins.filter(s => s.pegStability < validatedThreshold);
 
       // Sort by stability (worst first)
       depeggedStablecoins.sort((a, b) => a.pegStability - b.pegStability);

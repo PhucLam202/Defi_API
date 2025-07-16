@@ -133,15 +133,15 @@ const router: express.Router = express.Router();
  *         name: sortBy
  *         schema:
  *           type: string
- *           enum: [marketCap, stability, growth, name]
- *           default: marketCap
+ *           enum: [id, marketCap, stability, growth, name]
+ *           default: id
  *         description: Sort field
  *       - in: query
  *         name: sortOrder
  *         schema:
  *           type: string
  *           enum: [asc, desc]
- *           default: desc
+ *           default: asc
  *         description: Sort order
  *       - in: query
  *         name: includeChainData
@@ -277,7 +277,7 @@ router.get('/id/:id', rateLimitMiddleware, stablecoinController.getStablecoinByI
  * @swagger
  * /api/v1/stablecoins/chain/{chain}:
  *   get:
- *     summary: Get stablecoins by blockchain
+ *     summary: Get stablecoins by blockchain with chain-focused data structure
  *     tags: [Stablecoins]
  *     parameters:
  *       - in: path
@@ -289,7 +289,7 @@ router.get('/id/:id', rateLimitMiddleware, stablecoinController.getStablecoinByI
  *         example: ethereum
  *     responses:
  *       200:
- *         description: List of stablecoins on the specified chain
+ *         description: Chain-focused stablecoin data showing circulation on the specified chain
  *         content:
  *           application/json:
  *             schema:
@@ -298,9 +298,52 @@ router.get('/id/:id', rateLimitMiddleware, stablecoinController.getStablecoinByI
  *                 - type: object
  *                   properties:
  *                     data:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/StablecoinAsset'
+ *                       type: object
+ *                       properties:
+ *                         chain:
+ *                           type: string
+ *                           description: The blockchain name
+ *                           example: ethereum
+ *                         totalStablecoins:
+ *                           type: number
+ *                           description: Total number of stablecoins on this chain
+ *                           example: 25
+ *                         totalCirculation:
+ *                           type: number
+ *                           description: Total circulation on this chain in USD
+ *                           example: 45000000000
+ *                         stablecoins:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: tether
+ *                               name:
+ *                                 type: string
+ *                                 example: Tether USD
+ *                               symbol:
+ *                                 type: string
+ *                                 example: USDT
+ *                               marketCap:
+ *                                 type: number
+ *                                 description: Total market cap across all chains
+ *                                 example: 83000000000
+ *                               circulation:
+ *                                 type: number
+ *                                 description: Circulation specifically on this chain
+ *                                 example: 40000000000
+ *                               price:
+ *                                 type: number
+ *                                 example: 1.001
+ *                               pegStability:
+ *                                 type: number
+ *                                 example: 99.9
+ *                               riskLevel:
+ *                                 type: string
+ *                                 enum: [low, medium, high]
+ *                                 example: low
  *       400:
  *         description: Invalid chain format
  *         content:

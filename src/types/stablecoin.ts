@@ -48,11 +48,27 @@ export interface StablecoinFilters {
   mechanism?: string;
   minMarketCap?: number;
   chain?: string;
-  sortBy?: 'marketCap' | 'stability' | 'growth' | 'name';
+  sortBy?: 'id' | 'marketCap' | 'stability' | 'growth' | 'name';
   sortOrder?: 'asc' | 'desc';
   includeChainData?: boolean;
   limit?: number;
   offset?: number;
+}
+
+export interface ChainStablecoinResponse {
+  chain: string;
+  totalStablecoins: number;
+  totalCirculation: number;
+  stablecoins: {
+    id: string;
+    name: string;
+    symbol: string;
+    marketCap: number;
+    circulation: number;
+    price: number;
+    pegStability: number;
+    riskLevel: 'low' | 'medium' | 'high';
+  }[];
 }
 
 export interface StablecoinAnalytics {
