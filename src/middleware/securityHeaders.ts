@@ -1,31 +1,59 @@
 import { Request, Response, NextFunction } from 'express';
 
 export const securityHeaders = (req: Request, res: Response, next: NextFunction): void => {
-  // Prevent clickjacking
-  res.setHeader('X-Frame-Options', 'DENY');
+  // Enhanced Content Security Policy
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://stablecoins.llama.fi",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+    "media-src 'self'",
+    "frame-src 'none'"
+  ].join('; '));
   
-  // Prevent MIME type sniffing
+  // Security headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  
-  // Enable XSS protection
+  res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
-  
-  // Control referrer information
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   
-  // Content Security Policy
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; media-src 'self'; frame-src 'none';");
+  // Enhanced Permissions Policy
+  res.setHeader('Permissions-Policy', [
+    'geolocation=()',
+    'microphone=()',
+    'camera=()',
+    'payment=()',
+    'usb=()',
+    'accelerometer=()',
+    'gyroscope=()',
+    'magnetometer=()',
+    'interest-cohort=()'
+  ].join(', '));
   
   // Strict Transport Security (HTTPS only)
   if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   }
   
-  // Remove server header for security
-  res.removeHeader('X-Powered-By');
+  // Cache control for sensitive data
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   
-  // Permissions policy
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
+  // Remove potentially sensitive headers
+  res.removeHeader('X-Powered-By');
+  res.removeHeader('Server');
+  res.removeHeader('X-AspNet-Version');
+  res.removeHeader('X-AspNetMvc-Version');
+  
+  // Hide internal information
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
   
   next();
 };

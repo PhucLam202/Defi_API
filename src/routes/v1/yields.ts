@@ -10,14 +10,14 @@ import { yieldsController } from '../../controllers/yieldsController';
  *       properties:
  *         symbol:
  *           type: string
- *           description: Symbol của yield
+ *           description: Yield symbol
  *         apy:
  *           type: number
  *           description: Annual Percentage Yield
  *         updatedAt:
  *           type: string
  *           format: date-time
- *           description: Ngày cập nhật
+ *           description: Last updated date
  */
 
 /**
@@ -56,11 +56,11 @@ const router: express.Router = Router();
  * @swagger
  * /api/v1/yields:
  *   get:
- *     summary: Lấy danh sách tất cả yields
+ *     summary: Get all yields
  *     tags: [Yields]
  *     responses:
  *       200:
- *         description: Danh sách yields
+ *         description: List of yields
  *         content:
  *           application/json:
  *             schema:
@@ -68,19 +68,19 @@ const router: express.Router = Router();
  *               items:
  *                 $ref: '#/components/schemas/Yield'
  *       400:
- *         description: Tham số không hợp lệ
+ *         description: Invalid parameters
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       502:
- *         description: Lỗi từ API bên ngoài
+ *         description: External API error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
- *         description: Lỗi hệ thống
+ *         description: System error
  *         content:
  *           application/json:
  *             schema:
@@ -92,7 +92,7 @@ router.get('/', yieldsController.getYields.bind(yieldsController));
  * @swagger
  * /api/v1/yields/{symbol}:
  *   get:
- *     summary: Lấy yield theo symbol
+ *     summary: Get yield by symbol
  *     tags: [Yields]
  *     parameters:
  *       - in: path
@@ -103,7 +103,7 @@ router.get('/', yieldsController.getYields.bind(yieldsController));
  *           type: string
  *     responses:
  *       200:
- *         description: Yield tìm thấy
+ *         description: Yield found
  *         content:
  *           application/json:
  *             schema:
@@ -117,25 +117,25 @@ router.get('/', yieldsController.getYields.bind(yieldsController));
  *                 updatedAt: "2025-07-15T05:57:21.243Z"
  *               timestamp: "2025-07-15T05:57:21.243Z"
  *       400:
- *         description: Tham số không hợp lệ
+ *         description: Invalid parameters
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
- *         description: Không tìm thấy yield
+ *         description: Yield not found
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       502:
- *         description: Lỗi từ API bên ngoài
+ *         description: External API error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
- *         description: Lỗi hệ thống
+ *         description: System error
  *         content:
  *           application/json:
  *             schema:
