@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { AppError } from './e/AppError';
-import { ErrorCode } from './e/ErrorCode';
-import { logger } from '../utils/logger';
+import { AppError } from './e/AppError.js';
+import { ErrorCode } from './e/ErrorCode.js';
+import { logger } from '../utils/logger.js';
 
 export const requestValidator = (req: Request, res: Response, next: NextFunction): void => {
   // Validate request size

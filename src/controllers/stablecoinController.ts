@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { stablecoinService } from '../services/stablecoinService';
-import { ApiResponse, StablecoinAsset, StablecoinFilters, StablecoinAnalytics, ChainStablecoinResponse } from '../types';
-import { AppError } from '../middleware/e/AppError';
-import { ErrorCode } from '../middleware/e/ErrorCode';
-import { InputValidator } from '../utils/inputValidator';
+import { stablecoinService } from '../services/stablecoinService.js';
+import { ApiResponse, StablecoinAsset, StablecoinFilters, StablecoinAnalytics, ChainStablecoinResponse } from '../types/index.js';
+import { AppError } from '../middleware/e/AppError.js';
+import { ErrorCode } from '../middleware/e/ErrorCode.js';
+import { InputValidator } from '../utils/inputValidator.js';
 
 export class StablecoinController {
   

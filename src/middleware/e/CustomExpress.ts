@@ -1,9 +1,9 @@
 import { StatusCodes, ReasonPhrases } from "http-status-codes";
 import { NextFunction, Request, Response } from "express";
-import { ErrorCode } from "./ErrorCode";
-import { ErrorMessages } from "./ErrorMessages";
-import { AppError } from "./AppError";
-import { logger } from "../../utils/logger";
+import { ErrorCode } from "./ErrorCode.js";
+import { ErrorMessages } from "./ErrorMessages.js";
+import { AppError } from "./AppError.js";
+import { logger } from "../../utils/logger.js";
 
 declare module 'express' {
   interface Request {

@@ -1,14 +1,14 @@
 import axios from 'axios';
-import { logger } from '../utils/logger';
+import { logger } from '../utils/logger.js';
 import { 
   DeFiLlamaStablecoinResponse, 
   DeFiLlamaStablecoin, 
   StablecoinAsset, 
   StablecoinFilters, 
   StablecoinAnalytics 
-} from '../types';
-import { AppError } from '../middleware/e/AppError';
-import { ErrorCode } from '../middleware/e/ErrorCode';
+} from '../types/index.js';
+import { AppError } from '../middleware/e/AppError.js';
+import { ErrorCode } from '../middleware/e/ErrorCode.js';
 
 class StablecoinService {
   private readonly baseUrl = 'https://stablecoins.llama.fi';

@@ -1,6 +1,6 @@
 import express, { Router } from "express";
-import yieldsRoutes from "./yields";
-import stablecoinRoutes from "./stablecoin";
+import yieldsRoutes from "./yields.js";
+import stablecoinRoutes from "./stablecoin.js";
 
 const router: express.Router = Router();
 router.use("/yields", yieldsRoutes);
