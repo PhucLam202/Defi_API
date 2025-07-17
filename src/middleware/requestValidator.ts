@@ -105,7 +105,7 @@ export const requestValidator = (req: Request, res: Response, next: NextFunction
   }
 
   // Rate limiting for specific endpoints
-  const sensitiveEndpoints = ['/auth', '/admin', '/config', '/health'];
+  const sensitiveEndpoints = ['/auth', '/admin', '/config'];
   const isSensitive = sensitiveEndpoints.some(endpoint => url.startsWith(endpoint));
   
   if (isSensitive) {

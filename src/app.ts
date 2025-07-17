@@ -58,6 +58,12 @@ app.use('/docs', apiReference({
   spec: {
     content: specs,
   },
+  hideClientButton: true,
+  showSidebar: true,
+  hideModels: false,
+  hideSearch: false,
+  hideServerSelector: true,
+  hideTryIt: false
 }));
 
 // Root endpoint
