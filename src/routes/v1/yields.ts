@@ -1,5 +1,5 @@
 import express, { Router } from 'express';
-import { yieldsController } from '../../controllers/yieldsController';
+import { yieldsController } from '../../controllers/yieldsController.js';
 
 /**
  * @swagger

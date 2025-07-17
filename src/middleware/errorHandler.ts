@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '../utils/logger';
-import { AppError } from './e/AppError';
-import { ErrorCode } from './e/ErrorCode';
-import { CustomExpress } from './e/CustomExpress';
+import { logger } from '../utils/logger.js';
+import { AppError } from './e/AppError.js';
+import { ErrorCode } from './e/ErrorCode.js';
+import { CustomExpress } from './e/CustomExpress.js';
 
 declare module 'express' {
   interface Request {

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { AppError } from './e/AppError';
-import { ErrorCode } from './e/ErrorCode';
-import { logger } from '../utils/logger';
+import { AppError } from './e/AppError.js';
+import { ErrorCode } from './e/ErrorCode.js';
+import { logger } from '../utils/logger.js';
 
 export const requestValidator = (req: Request, res: Response, next: NextFunction): void => {
   // Validate request size
@@ -105,7 +105,7 @@ export const requestValidator = (req: Request, res: Response, next: NextFunction
   }
 
   // Rate limiting for specific endpoints
-  const sensitiveEndpoints = ['/auth', '/admin', '/config', '/health'];
+  const sensitiveEndpoints = ['/auth', '/admin', '/config'];
   const isSensitive = sensitiveEndpoints.some(endpoint => url.startsWith(endpoint));
   
   if (isSensitive) {

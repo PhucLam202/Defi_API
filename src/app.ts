@@ -4,10 +4,10 @@ import morgan from 'morgan';
 import compression from 'compression';
 import helmet from 'helmet';
 import { apiReference } from '@scalar/express-api-reference';
-import { config } from './config';
-import { errorHandler, notFoundHandler } from './middleware/errorHandler';
-import { specs } from './config/swagger.config';
-import v1Routes from './routes/v1';
+import { config } from './config/index.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { specs } from './config/swagger.config.js';
+import v1Routes from './routes/v1/index.js';
 
 const app:Express = express();
 
@@ -58,6 +58,12 @@ app.use('/docs', apiReference({
   spec: {
     content: specs,
   },
+  hideClientButton: true,
+  showSidebar: true,
+  hideModels: false,
+  hideSearch: false,
+  hideServerSelector: true,
+  hideTryIt: false
 }));
 
 // Root endpoint

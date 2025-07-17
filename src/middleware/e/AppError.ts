@@ -1,5 +1,5 @@
 import { StatusCodes } from "http-status-codes";
-import { ErrorCode } from "./ErrorCode";
+import { ErrorCode } from "./ErrorCode.js";
 
 export class AppError {
   msg: string;

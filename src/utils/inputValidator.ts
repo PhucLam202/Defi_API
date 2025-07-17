@@ -1,5 +1,5 @@
-import { AppError } from '../middleware/e/AppError';
-import { ErrorCode } from '../middleware/e/ErrorCode';
+import { AppError } from '../middleware/e/AppError.js';
+import { ErrorCode } from '../middleware/e/ErrorCode.js';
 
 export class InputValidator {
   

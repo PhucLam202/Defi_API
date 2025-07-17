@@ -1,6 +1,6 @@
 import express from 'express';
-import { stablecoinController } from '../../controllers/stablecoinController';
-import { rateLimitMiddleware } from '../../middleware/rateLimiter';
+import { stablecoinController } from '../../controllers/stablecoinController.js';
+import { rateLimitMiddleware } from '../../middleware/rateLimiter.js';
 
 const router: express.Router = express.Router();
 

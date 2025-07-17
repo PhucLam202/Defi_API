@@ -1,6 +1,6 @@
-import app from "./app";
-import { config } from "./config";
-import { logger } from "./utils/logger";
+import app from "./app.js";
+import { config } from "./config/index.js";
+import { logger } from "./utils/logger.js";
 
 const server = app.listen(config.port, () => {
   logger.info(

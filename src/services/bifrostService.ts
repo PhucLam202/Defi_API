@@ -1,9 +1,9 @@
 import axios from 'axios';
-import { config } from '../config';
-import { logger } from '../utils/logger';
-import { BifrostRawData, TokenYield } from '../types';
-import { AppError } from '../middleware/e/AppError';
-import { ErrorCode } from '../middleware/e/ErrorCode';
+import { config } from '../config/index.js';
+import { logger } from '../utils/logger.js';
+import { BifrostRawData, TokenYield } from '../types/index.js';
+import { AppError } from '../middleware/e/AppError.js';
+import { ErrorCode } from '../middleware/e/ErrorCode.js';
 
 class BifrostService {
   private readonly baseUrl: string;
