@@ -9,6 +9,7 @@ import {
 } from '../types/index.js';
 import { AppError } from '../middleware/e/AppError.js';
 import { ErrorCode } from '../middleware/e/ErrorCode.js';
+import https from 'https';
 
 class StablecoinService {
   private readonly baseUrl = 'https://stablecoins.llama.fi';
@@ -150,10 +151,10 @@ class StablecoinService {
           includePrices: 'true'
         },
         // Enhanced security options
-        httpsAgent: new (require('https').Agent)({
-          rejectUnauthorized: true, // Validate SSL certificates
-          secureProtocol: 'TLSv1_2_method', // Use TLS 1.2 minimum
-          ciphers: 'HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA' // Strong ciphers only
+        httpsAgent: new https.Agent({
+          rejectUnauthorized: true,
+          secureProtocol: 'TLSv1_2_method',
+          ciphers: 'HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA'
         })
       });
 
