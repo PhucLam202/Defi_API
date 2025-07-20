@@ -55,15 +55,7 @@ app.get("/api-docs/swagger.json", (req, res) => {
 
 // Serve Scalar API documentation
 app.use('/docs', apiReference({
-  spec: {
-    content: specs,
-  },
-  hideClientButton: true,
-  showSidebar: true,
-  hideModels: false,
-  hideSearch: false,
-  hideServerSelector: true,
-  hideTryIt: false
+  content: specs
 }));
 
 // Root endpoint

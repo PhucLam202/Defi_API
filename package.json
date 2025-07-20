@@ -5,11 +5,12 @@
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "nodemon --exec ts-node src/server.ts",
+    "dev": "nodemon src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "docs:generate": "ts-node scripts/generate-docs.ts",
-    "docs:serve": "npm run dev"
+    "docs:serve": "pnpm run dev",
+    "memory:update": "node .cursor/memory/update-memory.js"
   },
   "dependencies": {
     "@scalar/express-api-reference": "^0.8.10",
@@ -38,6 +39,7 @@
     "nodemon": "^3.0.1",
     "prettier": "^3.0.3",
     "ts-node": "^10.9.1",
+    "tsx": "^4.20.3",
     "typescript": "^5.2.2"
   },
   "keywords": [
