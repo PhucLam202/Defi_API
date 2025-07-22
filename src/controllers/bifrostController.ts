@@ -42,7 +42,10 @@ import {
   ExchangeRateResponse, 
   ConvertResponse, 
   ExchangeRateQuery,
-  ConvertQuery 
+  ConvertQuery,
+  VTokenListResponse,
+  VTokenDetailResponse,
+  VTokenListQuery 
 } from '../types/index.js';
 import { AppError } from '../middleware/e/AppError.js';
 import { ErrorCode } from '../middleware/e/ErrorCode.js';
@@ -537,6 +540,170 @@ export class BifrostController {
       next(error);
     }
   }
+  // ============================================================================
+  // EXTENDED CONTROLLER METHODS FOR NEW ENDPOINTS
+  // ============================================================================
+
+  /**
+   * GET /api/v1/bifrost/vtokens
+   * Get list of all vTokens with comprehensive metadata
+   */
+  async getVTokens(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const startTime = performance.now();
+      const requestId = `vtokens-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      logger.info('Processing vTokens list request', { 
+        requestId, 
+        query: req.query,
+        ip: req.ip 
+      });
+
+      // Extract and validate query parameters
+      const {
+        page = 1,
+        limit = 20,
+        network,
+        minApy,
+        maxApy,
+        minTvl,
+        sortBy = 'tvl',
+        sortOrder = 'desc',
+        status,
+        riskLevel
+      } = req.query;
+
+      // Validate parameters
+      const pageNum = Math.max(1, parseInt(page as string) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 20));
+      const minApyNum = minApy ? parseFloat(minApy as string) : undefined;
+      const maxApyNum = maxApy ? parseFloat(maxApy as string) : undefined;
+      const minTvlNum = minTvl ? parseFloat(minTvl as string) : undefined;
+
+      // Validate sort parameters
+      const validSortFields = ['apy', 'tvl', 'volume', 'holders', 'name'];
+      const validSortOrders = ['asc', 'desc'];
+      
+      if (!validSortFields.includes(sortBy as string)) {
+        throw new AppError('Invalid sortBy parameter', ErrorCode.VALIDATION_ERROR, 400);
+      }
+      
+      if (!validSortOrders.includes(sortOrder as string)) {
+        throw new AppError('Invalid sortOrder parameter', ErrorCode.VALIDATION_ERROR, 400);
+      }
+
+      // Build filter options
+      const filterOptions = {
+        page: pageNum,
+        limit: limitNum,
+        network: network ? (Array.isArray(network) ? network : [network]) : undefined,
+        minApy: minApyNum,
+        maxApy: maxApyNum,
+        minTvl: minTvlNum,
+        sortBy: sortBy as string,
+        sortOrder: sortOrder as string,
+        status: status as string,
+        riskLevel: riskLevel as string
+      };
+
+      // Get vTokens data from service
+      const vTokensData = await bifrostService.getVTokensList(filterOptions);
+      
+      const endTime = performance.now();
+      const responseTime = Math.round(endTime - startTime);
+
+      logger.info('vTokens request completed successfully', {
+        requestId,
+        responseTime,
+        tokensCount: vTokensData.data.tokens.length,
+        totalTokens: vTokensData.pagination.total
+      });
+
+      res.json({
+        success: true,
+        data: vTokensData.data,
+        pagination: vTokensData.pagination,
+        metadata: {
+          ...vTokensData.metadata,
+          requestId,
+          responseTime
+        },
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      logger.error('Error in getVTokens controller', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/v1/bifrost/vtokens/:symbol
+   * Get detailed information for a specific vToken
+   */
+  async getVTokenBySymbol(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const startTime = performance.now();
+      const requestId = `vtoken-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const { symbol } = req.params;
+      
+      logger.info('Processing vToken detail request', { 
+        requestId, 
+        symbol,
+        ip: req.ip 
+      });
+
+      // Validate symbol parameter
+      if (!symbol || typeof symbol !== 'string') {
+        throw new AppError('Symbol parameter is required', ErrorCode.VALIDATION_ERROR, 400);
+      }
+
+      // Clean and validate symbol
+      const cleanSymbol = symbol.trim().toUpperCase();
+      if (!/^[A-Z0-9]{2,10}$/.test(cleanSymbol)) {
+        throw new AppError('Invalid symbol format', ErrorCode.VALIDATION_ERROR, 400);
+      }
+
+      // Get detailed vToken data from service
+      const vTokenDetail = await bifrostService.getVTokenDetail(cleanSymbol);
+      
+      if (!vTokenDetail) {
+        throw new AppError(`vToken ${cleanSymbol} not found`, ErrorCode.NOT_FOUND, 404);
+      }
+      
+      const endTime = performance.now();
+      const responseTime = Math.round(endTime - startTime);
+
+      logger.info('vToken detail request completed successfully', {
+        requestId,
+        symbol: cleanSymbol,
+        responseTime
+      });
+
+      res.json({
+        success: true,
+        data: vTokenDetail,
+        metadata: {
+          requestId,
+          responseTime,
+          lastUpdate: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      logger.error('Error in getVTokenBySymbol controller', { 
+        symbol: req.params.symbol,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      next(error);
+    }
+  }
+
 }
 
 export const bifrostController = new BifrostController();

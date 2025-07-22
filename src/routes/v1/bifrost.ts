@@ -632,4 +632,178 @@ router.get('/convert', bifrostController.convertTokenAmount.bind(bifrostControll
 /// - **Caching**: Service-level caching for performance
 router.get('/supported-tokens', bifrostController.getSupportedTokens.bind(bifrostController));
 
+// ============================================================================
+// EXTENDED API ENDPOINTS
+// ============================================================================
+
+/**
+ * @swagger
+ * /api/v1/bifrost/vtokens:
+ *   get:
+ *     tags: [vTokens Management]
+ *     summary: Get comprehensive list of all vTokens
+ *     description: |
+ *       Retrieves a paginated list of all available vTokens with comprehensive metadata including:
+ *       - Exchange rates and price data
+ *       - APY information and trends
+ *       - TVL metrics and rankings
+ *       - Holder statistics
+ *       - Risk assessments
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Number of items per page
+ *       - in: query
+ *         name: network
+ *         schema:
+ *           type: array
+ *           items:
+ *             type: string
+ *         description: Filter by network (bifrost, polkadot, kusama, etc.)
+ *       - in: query
+ *         name: minApy
+ *         schema:
+ *           type: number
+ *         description: Minimum APY filter
+ *       - in: query
+ *         name: maxApy
+ *         schema:
+ *           type: number
+ *         description: Maximum APY filter
+ *       - in: query
+ *         name: minTvl
+ *         schema:
+ *           type: number
+ *         description: Minimum TVL filter (USD)
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [apy, tvl, volume, holders, name]
+ *           default: tvl
+ *         description: Sort field
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort order
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, paused, deprecated]
+ *         description: Filter by token status
+ *       - in: query
+ *         name: riskLevel
+ *         schema:
+ *           type: string
+ *           enum: [low, medium, high]
+ *         description: Filter by risk level
+ *     responses:
+ *       200:
+ *         description: vTokens list retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VTokenListResponse'
+ *       400:
+ *         description: Invalid query parameters
+ *       500:
+ *         description: Internal server error
+ */
+/// ## GET /vtokens - vTokens List with Advanced Filtering
+/// 
+/// **Purpose**: Comprehensive vToken listing with extensive filtering and sorting capabilities
+/// 
+/// **Query Parameters**:
+/// - `page`, `limit`: Pagination controls (limit max 100)
+/// - `network`: Filter by network (array support)
+/// - `minApy`, `maxApy`: APY range filtering
+/// - `minTvl`: TVL minimum threshold
+/// - `sortBy`: apy|tvl|volume|holders|name
+/// - `sortOrder`: asc|desc
+/// - `status`: active|paused|deprecated
+/// - `riskLevel`: low|medium|high
+/// 
+/// **Security**: Multi-layer query validation and sanitization
+/// **Features**: Ecosystem summary, network status, pagination metadata
+/// **Caching**: Service-level with 10-minute TTL
+router.get('/vtokens', bifrostController.getVTokens.bind(bifrostController));
+
+/**
+ * @swagger
+ * /api/v1/bifrost/vtokens/{symbol}:
+ *   get:
+ *     tags: [vTokens Management]
+ *     summary: Get detailed information for a specific vToken
+ *     description: |
+ *       Retrieves comprehensive information for a specific vToken including:
+ *       - Detailed exchange rate history and volatility
+ *       - Complete APY breakdown with components
+ *       - TVL composition and validator distribution
+ *       - Staking parameters and risk analysis
+ *       - Holder analytics and protocol integrations
+ *     parameters:
+ *       - in: path
+ *         name: symbol
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^[A-Z0-9]{2,10}$'
+ *         description: vToken symbol (e.g., vKSM, vDOT)
+ *     responses:
+ *       200:
+ *         description: vToken details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VTokenDetailResponse'
+ *       400:
+ *         description: Invalid symbol format
+ *       404:
+ *         description: vToken not found
+ *       500:
+ *         description: Internal server error
+ */
+/// ## GET /vtokens/{symbol} - Detailed vToken Information
+/// 
+/// **Purpose**: Complete vToken analysis with deep metrics and analytics
+/// 
+/// **Path Parameters**:
+/// - `symbol`: vToken symbol (validated format: 2-10 alphanumeric chars)
+/// 
+/// **Response Includes**:
+/// - Exchange rate details with volatility
+/// - APY breakdown with fee analysis
+/// - TVL composition and validator data
+/// - Supply information and burns
+/// - Market data with OHLC
+/// - Staking details and slashing history
+/// - Holder distribution analysis
+/// - Risk assessment with audit data
+/// - Protocol integrations
+/// - Performance metrics
+/// - Governance and events
+/// - Technical information
+/// 
+/// **Security**: Symbol format validation and sanitization
+/// **Features**: Real-time data with historical context
+/// **Caching**: 5-minute TTL for fresh data
+router.get('/vtokens/:symbol', bifrostController.getVTokenBySymbol.bind(bifrostController));
+
+
 export default router;

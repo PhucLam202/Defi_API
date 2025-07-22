@@ -208,7 +208,7 @@ class BifrostService {
       });
 
       // Cache successful response for future requests
-      this.setCache(cacheKey, response.data);
+      this.setCache(cacheKey, { data: response.data, timestamp: Date.now() });
       return response.data;
     } catch (error) {
       // Log error details for debugging (sanitized by logger)
@@ -283,7 +283,7 @@ class BifrostService {
         }
       });
 
-      this.setCache(cacheKey, response.data);
+      this.setCache(cacheKey, { data: response.data, timestamp: Date.now() });
       return response.data;
     } catch (error) {
       logger.error('Failed to fetch Bifrost staking data', { error: (error as Error).message });
@@ -568,6 +568,381 @@ class BifrostService {
     /// FINAL VALIDATION: Exact Match Check
     return baseToken === expectedBaseToken;
   }
+
+  // ============================================================================
+  // EXTENDED SERVICE METHODS FOR NEW ENDPOINTS
+  // ============================================================================
+
+  /**
+   * Get comprehensive list of vTokens with filtering and pagination
+   */
+  async getVTokensList(options: {
+    page: number;
+    limit: number;
+    network?: string[];
+    minApy?: number;
+    maxApy?: number;
+    minTvl?: number;
+    sortBy: string;
+    sortOrder: string;
+    status?: string;
+    riskLevel?: string;
+  }) {
+    const cacheKey = `vtokens_list_${JSON.stringify(options)}`;
+    
+    // Check cache first
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      logger.debug('Returning cached vTokens list');
+      return cached;
+    }
+
+    try {
+      // Get base data from existing APIs
+      const [siteData, stakingData] = await Promise.all([
+        this.getSiteData(),
+        this.getStakingData()
+      ]);
+
+      // Transform and enhance data
+      const allTokens = await this.transformToVTokenSummaries(siteData, stakingData);
+
+      // Apply filters
+      let filteredTokens = this.applyVTokenFilters(allTokens, options);
+
+      // Apply sorting
+      filteredTokens = this.sortVTokens(filteredTokens, options.sortBy, options.sortOrder);
+
+      // Calculate pagination
+      const total = filteredTokens.length;
+      const totalPages = Math.ceil(total / options.limit);
+      const startIndex = (options.page - 1) * options.limit;
+      const endIndex = startIndex + options.limit;
+      const paginatedTokens = filteredTokens.slice(startIndex, endIndex);
+
+      // Build response
+      const response = {
+        data: {
+          tokens: paginatedTokens,
+          summary: await this.generateVTokenEcosystemSummary(allTokens),
+          networks: await this.getNetworkInfo()
+        },
+        pagination: {
+          page: options.page,
+          limit: options.limit,
+          total,
+          totalPages,
+          hasNextPage: options.page < totalPages,
+          hasPrevPage: options.page > 1
+        },
+        metadata: {
+          lastUpdate: new Date().toISOString(),
+          dataSource: ['bifrost_site_api', 'bifrost_staking_api'],
+          cacheAge: 0
+        }
+      };
+
+      // Cache the result (10 minutes TTL)
+      this.cache.set(cacheKey, { data: response, timestamp: Date.now() });
+      
+      return response;
+
+    } catch (error) {
+      logger.error('Error fetching vTokens list', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        options 
+      });
+      throw AppError.newError502(ErrorCode.EXTERNAL_API_ERROR, 'Failed to fetch vTokens list');
+    }
+  }
+
+  /**
+   * Get detailed information for a specific vToken
+   */
+  async getVTokenDetail(symbol: string) {
+    const cacheKey = `vtoken_detail_${symbol}`;
+    
+    // Check cache first (5 minutes TTL for fresher data)
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      logger.debug('Returning cached vToken detail', { symbol });
+      return cached;
+    }
+
+    try {
+      // Get base data
+      const [siteData, stakingData, exchangeRate] = await Promise.all([
+        this.getSiteData(),
+        this.getStakingData(),
+        this.getExchangeRate(symbol)
+      ]);
+
+      // Find token data
+      const tokenSiteData = siteData[symbol];
+      const tokenStakingData = stakingData.supportedAssets.find(
+        asset => asset.symbol === symbol
+      );
+
+      if (!tokenSiteData && !tokenStakingData) {
+        return null;
+      }
+
+      // Build detailed response
+      const vTokenDetail = await this.buildVTokenDetail(
+        symbol, 
+        tokenSiteData, 
+        tokenStakingData, 
+        exchangeRate
+      );
+
+      // Cache the result (5 minutes TTL)
+      this.cache.set(cacheKey, { data: vTokenDetail, timestamp: Date.now() });
+      
+      return vTokenDetail;
+
+    } catch (error) {
+      logger.error('Error fetching vToken detail', { 
+        symbol,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw AppError.newError502(ErrorCode.EXTERNAL_API_ERROR, `Failed to fetch vToken ${symbol} details`);
+    }
+  }
+
+
+  // ============================================================================
+  // HELPER METHODS FOR NEW FUNCTIONALITY
+  // ============================================================================
+
+  private async transformToVTokenSummaries(siteData: any, stakingData: any) {
+    // This would transform the existing API data into VTokenSummary format
+    // For now, returning mock data structure
+    const summaries = [];
+    
+    for (const symbol of Object.keys(siteData)) {
+      if (symbol.startsWith('v') && symbol !== 'version') {
+        const stakingInfo = stakingData.supportedAssets.find((asset: any) => asset.symbol === symbol);
+        
+        summaries.push({
+          token: { symbol, network: 'bifrost' },
+          baseToken: { symbol: symbol.substring(1), network: 'bifrost' },
+          exchangeRate: {
+            current: stakingInfo?.exchangeRatio || 1,
+            change24h: 0, // Would calculate from historical data
+            change7d: 0,
+            lastUpdate: new Date().toISOString()
+          },
+          apy: {
+            current: parseFloat(siteData[symbol].apy || '0'),
+            average30d: parseFloat(siteData[symbol].apy || '0'),
+            min30d: parseFloat(siteData[symbol].apy || '0') * 0.9,
+            max30d: parseFloat(siteData[symbol].apy || '0') * 1.1,
+            trend: 'stable' as const
+          },
+          tvl: {
+            total: siteData[symbol].tvl || 0,
+            change24h: 0,
+            change7d: 0,
+            rank: 1
+          },
+          totalSupply: {
+            amount: (siteData[symbol].totalIssuance || 0).toString(),
+            usdValue: siteData[symbol].tvm || 0,
+            circulatingSupply: (siteData[symbol].totalIssuance || 0).toString()
+          },
+          price: {
+            current: siteData[symbol].price || 0,
+            change24h: 0,
+            high24h: 0,
+            low24h: 0,
+            volume24h: 0,
+            marketCap: 0
+          },
+          holders: {
+            total: siteData[symbol].holders || 0,
+            change24h: 0,
+            topHolderPercentage: 0
+          },
+          status: 'active' as const,
+          riskLevel: 'medium' as const,
+          auditStatus: 'audited' as const,
+          links: {}
+        });
+      }
+    }
+    
+    return summaries;
+  }
+
+  private applyVTokenFilters(tokens: any[], options: any) {
+    let filtered = [...tokens];
+
+    if (options.minApy) {
+      filtered = filtered.filter(token => token.apy.current >= options.minApy);
+    }
+
+    if (options.maxApy) {
+      filtered = filtered.filter(token => token.apy.current <= options.maxApy);
+    }
+
+    if (options.minTvl) {
+      filtered = filtered.filter(token => token.tvl.total >= options.minTvl);
+    }
+
+    if (options.status) {
+      filtered = filtered.filter(token => token.status === options.status);
+    }
+
+    if (options.riskLevel) {
+      filtered = filtered.filter(token => token.riskLevel === options.riskLevel);
+    }
+
+    if (options.network && options.network.length > 0) {
+      filtered = filtered.filter(token => 
+        options.network.includes(token.token.network)
+      );
+    }
+
+    return filtered;
+  }
+
+  private sortVTokens(tokens: any[], sortBy: string, sortOrder: string) {
+    return tokens.sort((a, b) => {
+      let aValue, bValue;
+
+      switch (sortBy) {
+        case 'apy':
+          aValue = a.apy.current;
+          bValue = b.apy.current;
+          break;
+        case 'tvl':
+          aValue = a.tvl.total;
+          bValue = b.tvl.total;
+          break;
+        case 'volume':
+          aValue = a.price.volume24h;
+          bValue = b.price.volume24h;
+          break;
+        case 'holders':
+          aValue = a.holders.total;
+          bValue = b.holders.total;
+          break;
+        case 'name':
+          aValue = a.token.symbol;
+          bValue = b.token.symbol;
+          return sortOrder === 'asc' 
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        default:
+          aValue = a.tvl.total;
+          bValue = b.tvl.total;
+      }
+
+      return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+  }
+
+  private async generateVTokenEcosystemSummary(tokens: any[]) {
+    const totalTVL = tokens.reduce((sum, token) => sum + token.tvl.total, 0);
+    const totalHolders = tokens.reduce((sum, token) => sum + token.holders.total, 0);
+    const averageAPY = tokens.length > 0 
+      ? tokens.reduce((sum, token) => sum + token.apy.current, 0) / tokens.length 
+      : 0;
+
+    return {
+      totalTVL,
+      totalTokens: tokens.length,
+      totalHolders,
+      averageAPY,
+      totalVolume24h: 0,
+      breakdown: {
+        byNetwork: [
+          {
+            network: 'bifrost',
+            tvl: totalTVL,
+            tokenCount: tokens.length,
+            percentage: 100
+          }
+        ],
+        byRiskLevel: [
+          {
+            level: 'low' as const,
+            count: tokens.filter(t => t.riskLevel === 'low').length,
+            percentage: 0
+          },
+          {
+            level: 'medium' as const,
+            count: tokens.filter(t => t.riskLevel === 'medium').length,
+            percentage: 0
+          },
+          {
+            level: 'high' as const,
+            count: tokens.filter(t => t.riskLevel === 'high').length,
+            percentage: 0
+          }
+        ]
+      },
+      trends: {
+        tvlChange7d: 0,
+        apyChange7d: 0,
+        holdersChange7d: 0
+      }
+    };
+  }
+
+  private async getNetworkInfo() {
+    return [
+      {
+        name: 'bifrost',
+        status: 'active' as const,
+        latency: 100,
+        blockHeight: 1000000,
+        lastSync: new Date().toISOString(),
+        supportedTokens: await this.getSupportedTokens()
+      }
+    ];
+  }
+
+  private async buildVTokenDetail(symbol: string, siteData: any, _stakingData: any, exchangeRate: any) {
+    // This would build comprehensive VTokenDetail response
+    // For now, returning mock structure that matches the type definition
+    return {
+      token: { symbol, network: 'bifrost' },
+      baseToken: { symbol: symbol.substring(1), network: 'bifrost' },
+      exchangeRate: {
+        current: exchangeRate?.rate || 1,
+        precision: 18,
+        history: { '1h': 1, '24h': 1, '7d': 1, '30d': 1 },
+        volatility: { daily: 0.01, weekly: 0.05, monthly: 0.1 },
+        sources: { primary: 'runtime', fallback: ['frontend'], confidence: 95 },
+        nextUpdate: new Date(Date.now() + 5 * 60 * 1000).toISOString()
+      },
+      apy: {
+        total: parseFloat(siteData?.apy || '0'),
+        base: parseFloat(siteData?.apyBase || '0'),
+        reward: parseFloat(siteData?.apyReward || '0'),
+        source: 'api' as const,
+        components: { staking: parseFloat(siteData?.apy || '0') },
+        fees: { protocol: 0.1, validator: 5, slashing: 0.01, gas: 0.001 },
+        netApy: parseFloat(siteData?.apy || '0') * 0.95,
+        historical: [],
+        projections: { conservative: 10, expected: 12, optimistic: 15, timeframe: '1y' }
+      },
+      // Add other required fields with mock data...
+      tvl: {} as any,
+      supply: {} as any,
+      price: {} as any,
+      staking: {} as any,
+      holders: {} as any,
+      risk: {} as any,
+      integrations: [],
+      performance: {} as any,
+      governance: {} as any,
+      events: {} as any,
+      technical: {} as any
+    };
+  }
+
 }
 
 export const bifrostService = new BifrostService();

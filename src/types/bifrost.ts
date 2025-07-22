@@ -363,3 +363,615 @@ export const isTokenAmount = (obj: any): obj is TokenAmount => {
     typeof obj.decimals === 'number' &&
     isTokenIdentifier(obj.token);
 };
+
+// ============================================================================
+// EXTENDED TYPES FOR NEW API ENDPOINTS
+// ============================================================================
+
+// Time series data structure for analytics
+export interface TimeSeriesData {
+  timestamp: string; // ISO 8601
+  value: number;
+  change?: number; // Change from previous period
+  changePercent?: number;
+}
+
+// Pagination wrapper
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+// ============================================================================
+// 1. GET /api/v1/bifrost/vtokens - List vTokens
+// ============================================================================
+
+export interface VTokenListResponse {
+  success: boolean;
+  data: {
+    tokens: VTokenSummary[];
+    summary: VTokenEcosystemSummary;
+    networks: NetworkInfo[];
+  };
+  pagination: PaginationInfo;
+  metadata: {
+    lastUpdate: string;
+    dataSource: string[];
+    cacheAge: number; // seconds
+  };
+  timestamp: string;
+}
+
+export interface VTokenSummary {
+  // Basic Info
+  token: TokenIdentifier;
+  baseToken: TokenIdentifier;
+  
+  // Financial Metrics
+  exchangeRate: {
+    current: number;
+    change24h: number;
+    change7d: number;
+    lastUpdate: string;
+  };
+  
+  apy: {
+    current: number;
+    average30d: number;
+    min30d: number;
+    max30d: number;
+    trend: 'up' | 'down' | 'stable';
+  };
+  
+  // TVL & Supply
+  tvl: {
+    total: number; // USD value
+    change24h: number;
+    change7d: number;
+    rank: number; // Rank among all vTokens
+  };
+  
+  totalSupply: {
+    amount: string;
+    usdValue: number;
+    circulatingSupply: string;
+  };
+  
+  // Market Data
+  price: {
+    current: number;
+    change24h: number;
+    high24h: number;
+    low24h: number;
+    volume24h: number;
+    marketCap: number;
+  };
+  
+  // Basic Stats
+  holders: {
+    total: number;
+    change24h: number;
+    topHolderPercentage: number;
+  };
+  
+  // Risk & Status
+  status: 'active' | 'paused' | 'deprecated';
+  riskLevel: 'low' | 'medium' | 'high';
+  auditStatus: 'audited' | 'unaudited' | 'pending';
+  
+  // Quick Access Links
+  links: {
+    subscan?: string;
+    polkadot?: string;
+    documentation?: string;
+  };
+}
+
+export interface VTokenEcosystemSummary {
+  totalTVL: number;
+  totalTokens: number;
+  totalHolders: number;
+  averageAPY: number;
+  totalVolume24h: number;
+  
+  breakdown: {
+    byNetwork: {
+      network: string;
+      tvl: number;
+      tokenCount: number;
+      percentage: number;
+    }[];
+    
+    byRiskLevel: {
+      level: 'low' | 'medium' | 'high';
+      count: number;
+      percentage: number;
+    }[];
+  };
+  
+  trends: {
+    tvlChange7d: number;
+    apyChange7d: number;
+    holdersChange7d: number;
+  };
+}
+
+export interface NetworkInfo {
+  name: string;
+  status: 'active' | 'maintenance' | 'deprecated';
+  latency: number; // ms
+  blockHeight: number;
+  lastSync: string;
+  supportedTokens: string[];
+}
+
+export interface VTokenListQuery {
+  page?: number;
+  limit?: number;
+  network?: string[];
+  minApy?: number;
+  maxApy?: number;
+  minTvl?: number;
+  sortBy?: 'apy' | 'tvl' | 'volume' | 'holders' | 'name';
+  sortOrder?: 'asc' | 'desc';
+  status?: 'active' | 'paused' | 'deprecated';
+  riskLevel?: 'low' | 'medium' | 'high';
+}
+
+// ============================================================================
+// 2. GET /api/v1/bifrost/vtokens/{symbol} - Detailed vToken
+// ============================================================================
+
+export interface VTokenDetailResponse {
+  success: boolean;
+  data: VTokenDetail;
+  timestamp: string;
+}
+
+export interface VTokenDetail {
+  // Complete Token Info
+  token: TokenIdentifier;
+  baseToken: TokenIdentifier;
+  
+  // Detailed Financial Metrics
+  exchangeRate: ExchangeRateDetail;
+  apy: APYBreakdownDetailed;
+  
+  // Comprehensive TVL Data
+  tvl: TVLBreakdown;
+  
+  // Supply & Distribution
+  supply: SupplyInfo;
+  
+  // Detailed Market Data
+  price: PriceDetail;
+  
+  // Staking Information
+  staking: StakingDetail;
+  
+  // Holder Analysis
+  holders: HolderAnalysis;
+  
+  // Risk Assessment
+  risk: RiskAssessment;
+  
+  // Protocol Integration
+  integrations: ProtocolIntegration[];
+  
+  // Performance Metrics
+  performance: PerformanceMetrics;
+  
+  // Governance & Events
+  governance: GovernanceInfo;
+  events: RecentEvents;
+  
+  // Technical Data
+  technical: TechnicalInfo;
+}
+
+export interface ExchangeRateDetail {
+  current: number;
+  precision: number;
+  history: {
+    '1h': number;
+    '24h': number;
+    '7d': number;
+    '30d': number;
+  };
+  
+  volatility: {
+    daily: number;
+    weekly: number;
+    monthly: number;
+  };
+  
+  sources: {
+    primary: string;
+    fallback: string[];
+    confidence: number; // 0-100
+  };
+  
+  nextUpdate: string;
+}
+
+export interface APYBreakdownDetailed extends APYBreakdown {
+  components: {
+    staking: number; // Base staking rewards
+    liquidityMining?: number; // Additional LP rewards
+    mev?: number; // MEV rewards
+    fees?: number; // Protocol fees earned
+    other?: number; // Other reward sources
+  };
+  
+  fees: {
+    protocol: number; // Protocol fee percentage
+    validator: number; // Validator commission
+    slashing: number; // Expected slashing losses
+    gas: number; // Average gas costs
+  };
+  
+  netApy: number; // APY after all fees
+  
+  historical: TimeSeriesData[];
+  
+  projections: {
+    conservative: number;
+    expected: number;
+    optimistic: number;
+    timeframe: string;
+  };
+}
+
+export interface TVLBreakdown {
+  total: {
+    usd: number;
+    native: string; // In base token
+    change: {
+      '1h': number;
+      '24h': number;
+      '7d': number;
+      '30d': number;
+    };
+  };
+  
+  composition: {
+    staked: number; // Actually staked amount
+    unstaking: number; // Tokens in unstaking period
+    liquid: number; // Available liquidity
+    reserves: number; // Protocol reserves
+  };
+  
+  distribution: {
+    validators: {
+      validatorId: string;
+      name?: string;
+      amount: string;
+      percentage: number;
+      commission: number;
+      status: 'active' | 'inactive' | 'slashed';
+    }[];
+  };
+  
+  history: TimeSeriesData[];
+  
+  flows: {
+    inflows24h: number;
+    outflows24h: number;
+    netFlow24h: number;
+  };
+}
+
+export interface SupplyInfo {
+  total: {
+    amount: string;
+    percentage: number; // Of max supply
+  };
+  
+  circulating: {
+    amount: string;
+    percentage: number; // Of total supply
+  };
+  
+  locked: {
+    staking: string;
+    vesting: string;
+    governance: string;
+    other: string;
+  };
+  
+  inflation: {
+    rate: number; // Annual inflation rate
+    mechanism: string;
+    nextChange: string;
+  };
+  
+  burns: {
+    total: string;
+    mechanism: string;
+    lastBurn: {
+      amount: string;
+      date: string;
+      reason: string;
+    };
+  };
+}
+
+export interface PriceDetail {
+  current: {
+    usd: number;
+    btc?: number;
+    eth?: number;
+    baseToken: number;
+  };
+  
+  ohlc24h: {
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+  };
+  
+  volume: {
+    '24h': number;
+    '7d': number;
+    '30d': number;
+  };
+  
+  marketCap: {
+    current: number;
+    fullyDiluted: number;
+    rank: number;
+  };
+  
+  liquidity: {
+    available: number;
+    depth: {
+      '1%': number; // Liquidity within 1% of current price
+      '5%': number;
+      '10%': number;
+    };
+  };
+  
+  priceFeeds: {
+    source: string;
+    price: number;
+    weight: number;
+    lastUpdate: string;
+  }[];
+}
+
+export interface StakingDetail {
+  parameters: {
+    unstakingPeriod: number; // seconds
+    minimumStake: string;
+    maximumStake?: string;
+    slashingConditions: string[];
+  };
+  
+  validators: {
+    total: number;
+    active: number;
+    avgCommission: number;
+    topValidators: {
+      id: string;
+      name?: string;
+      commission: number;
+      stake: string;
+      performance: number; // 0-100
+      uptime: number; // 0-100
+    }[];
+  };
+  
+  rewards: {
+    frequency: string; // 'block' | 'era' | 'epoch'
+    lastDistribution: string;
+    nextDistribution: string;
+    claimable: boolean;
+  };
+  
+  slashing: {
+    events: {
+      date: string;
+      validator: string;
+      amount: string;
+      reason: string;
+    }[];
+    totalSlashed: string;
+    riskScore: number; // 0-100
+  };
+}
+
+export interface HolderAnalysis extends HolderInfo {
+  distribution: {
+    range: string; // e.g., "0-1", "1-10", etc.
+    holders: number;
+    percentage: number;
+    totalValue: number;
+  }[];
+  
+  concentration: {
+    top10Percentage: number;
+    top50Percentage: number;
+    top100Percentage: number;
+    giniCoefficient: number; // Wealth inequality measure
+  };
+  
+  activity: {
+    activeHolders24h: number;
+    newHolders24h: number;
+    churned24h: number;
+    averageHoldTime: number; // days
+  };
+  
+  geographic?: {
+    region: string;
+    percentage: number;
+  }[];
+}
+
+export interface RiskAssessment {
+  overall: {
+    score: number; // 0-100 (higher = riskier)
+    level: 'low' | 'medium' | 'high';
+    lastAssessment: string;
+  };
+  
+  categories: {
+    smartContract: {
+      score: number;
+      audits: {
+        firm: string;
+        date: string;
+        report: string;
+        issues: {
+          critical: number;
+          high: number;
+          medium: number;
+          low: number;
+        };
+      }[];
+      codeQuality: number;
+    };
+    
+    centralization: {
+      score: number;
+      factors: {
+        validatorConcentration: number;
+        governanceConcentration: number;
+        developmentTeam: number;
+      };
+    };
+    
+    market: {
+      score: number;
+      factors: {
+        liquidity: number;
+        volatility: number;
+        correlations: {
+          symbol: string;
+          correlation: number;
+        }[];
+      };
+    };
+    
+    operational: {
+      score: number;
+      factors: {
+        uptime: number;
+        networkStability: number;
+        slashingHistory: number;
+      };
+    };
+  };
+  
+  warnings: {
+    type: 'low' | 'medium' | 'high' | 'critical';
+    message: string;
+    since: string;
+    resolved?: string;
+  }[];
+}
+
+export interface ProtocolIntegration {
+  protocol: string;
+  type: 'dex' | 'lending' | 'farming' | 'governance';
+  tvl: number;
+  apy?: number;
+  status: 'active' | 'deprecated';
+  link?: string;
+}
+
+export interface PerformanceMetrics {
+  returns: {
+    '1d': number;
+    '7d': number;
+    '30d': number;
+    '90d': number;
+    '1y': number;
+    sinceInception: number;
+  };
+  
+  sharpeRatio: number;
+  maxDrawdown: number;
+  volatility: number;
+  
+  benchmarks: {
+    name: string;
+    performance: number;
+    correlation: number;
+  }[];
+  
+  efficiency: {
+    capitalEfficiency: number; // TVL/rewards ratio
+    costBasis: number; // Average cost to stake
+    breakeven: number; // Days to break even on fees
+  };
+}
+
+export interface GovernanceInfo {
+  votingPower: string; // Total voting power of token
+  activeProposals: {
+    id: string;
+    title: string;
+    status: 'active' | 'passed' | 'failed';
+    endTime: string;
+    participation: number;
+  }[];
+  
+  recentDecisions: {
+    proposal: string;
+    decision: string;
+    impact: string;
+    date: string;
+  }[];
+}
+
+export interface RecentEvents {
+  updates: {
+    type: 'upgrade' | 'parameter_change' | 'incident' | 'announcement';
+    title: string;
+    description: string;
+    date: string;
+    impact: 'low' | 'medium' | 'high';
+    link?: string;
+  }[];
+  
+  milestones: {
+    name: string;
+    date: string;
+    description: string;
+  }[];
+}
+
+export interface TechnicalInfo {
+  blockchain: {
+    network: string;
+    consensusMechanism: string;
+    blockTime: number; // seconds
+    finalityTime: number; // seconds
+  };
+  
+  contracts: {
+    address: string;
+    version: string;
+    upgradeability: boolean;
+    verificationStatus: 'verified' | 'unverified';
+  }[];
+  
+  apis: {
+    rpc: string[];
+    graphql?: string;
+    rest?: string;
+  };
+  
+  sdk: {
+    languages: string[];
+    documentation: string;
+    examples: string;
+  };
+}
+
