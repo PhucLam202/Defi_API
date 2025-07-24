@@ -127,23 +127,27 @@ const router: ExpressRouter = Router();
  *         name: minApy
  *         schema:
  *           type: number
- *         description: Minimum APY filter (0-1000%)
+ *         description: Minimum APY filter (0-1000%) - Optional
  *         example: 10
+ *         required: false
  *       - in: query
  *         name: sortBy
  *         schema:
  *           type: string
  *           enum: [apy, tvl]
- *         description: Sort criteria
+ *           default: apy
+ *         description: Sort criteria - Optional, defaults to apy
  *         example: apy
+ *         required: false
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           minimum: 1
  *           maximum: 100
- *         description: Result limit
+ *         description: Result limit - Optional, returns all data if not specified
  *         example: 20
+ *         required: false
  *     responses:
  *       200:
  *         description: List of available yields
@@ -185,9 +189,10 @@ const router: ExpressRouter = Router();
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 /// **GET /yields**
-/// Retrieves all available yields with filtering and sorting capabilities
+/// Retrieves all available yields with optional filtering and sorting
+/// - **Default Behavior**: Returns all yield data without requiring parameters
 /// - **Security**: Query parameter validation, APY/limit bounds checking
-/// - **Features**: Filtering by minApy, sorting by apy/tvl, pagination
+/// - **Features**: Optional filtering by minApy, sorting by apy/tvl, pagination
 /// - **Validation**: Multi-layer input validation and sanitization
 /// - **Performance**: Cached data with intelligent transformation
 router.get('/yields', bifrostController.getYields.bind(bifrostController));

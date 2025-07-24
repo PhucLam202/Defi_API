@@ -105,9 +105,10 @@ export class BifrostController {
   async getYields(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       /// Extract query parameters with default values for robustness
-      const { minApy, sortBy = 'apy', limit = '20' } = req.query;
+      /// NOTE: Parameters are now optional - endpoint returns all data by default
+      const { minApy, sortBy = 'apy', limit } = req.query;
       
-      /// VALIDATION LAYER 1: Sort Parameter Validation
+      /// VALIDATION LAYER 1: Sort Parameter Validation (if provided)
       /// Prevents SQL injection and ensures only valid sort criteria
       const validSortOptions = ['apy', 'tvl'];
       if (sortBy && !validSortOptions.includes(sortBy as string)) {
@@ -124,11 +125,18 @@ export class BifrostController {
       
       /// DATA TRANSFORMATION: Convert raw API data to standardized yield objects
       /// Filter out null results from tokens with incomplete data
+      logger.debug('Available site data keys:', Object.keys(rawData).filter(k => k.startsWith('V') || k.startsWith('v')));
       let yields = supportedTokens
-        .map(token => bifrostService.transformToTokenYield(rawData, token))
+        .map(token => {
+          const result = bifrostService.transformToTokenYield(rawData, token);
+          if (!result) {
+            logger.debug(`Failed to transform token: ${token}`);
+          }
+          return result;
+        })
         .filter((tokenYield): tokenYield is TokenYield => tokenYield !== null);
 
-      /// VALIDATION LAYER 2: APY Filter Validation
+      /// VALIDATION LAYER 2: APY Filter Validation (if provided)
       /// Applies minimum APY filter with comprehensive bounds checking
       if (minApy) {
         const minApyNum = parseFloat(minApy as string);
@@ -149,22 +157,25 @@ export class BifrostController {
         yields.sort((a, b) => b.apy - a.apy);     // APY: Highest to lowest (default)
       }
 
-      /// VALIDATION LAYER 3: Limit Parameter Validation
-      /// Prevents DoS attacks via oversized result sets and ensures reasonable pagination
-      const limitNum = parseInt(limit as string);
-      if (isNaN(limitNum) || limitNum <= 0 || limitNum > 100) {
-        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid limit parameter. Must be between 1 and 100');
+      /// VALIDATION LAYER 3: Limit Parameter Validation (if provided)
+      /// If no limit is specified, return all data
+      let finalYields = yields;
+      if (limit) {
+        const limitNum = parseInt(limit as string);
+        if (isNaN(limitNum) || limitNum <= 0 || limitNum > 100) {
+          throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid limit parameter. Must be between 1 and 100');
+        }
+        /// Apply pagination: Limit results to prevent API abuse
+        finalYields = yields.slice(0, limitNum);
       }
-      /// Apply pagination: Limit results to prevent API abuse
-      yields = yields.slice(0, limitNum);
 
       const response: ApiResponse<TokenYield[]> = {
         success: true,
-        data: yields,
+        data: finalYields,
         pagination: {
           page: 1,
-          limit: yields.length,
-          total: yields.length
+          limit: finalYields.length,
+          total: yields.length  // Total before limit applied
         },
         timestamp: new Date().toISOString()
       };
@@ -246,6 +257,7 @@ export class BifrostController {
       /// DATA RETRIEVAL: Fetch protocol data and transform for specific token
       /// Uses cached service data for performance optimization
       const rawData = await bifrostService.getSiteData();
+      logger.debug(`Looking for yield data for normalized symbol: ${normalizedSymbol}`);
       const yieldData = bifrostService.transformToTokenYield(rawData, normalizedSymbol);
 
       /// VALIDATION LAYER 5: Data Existence Validation
@@ -434,12 +446,23 @@ export class BifrostController {
       logger.info('Converting token amount', { amount, from, to, network, slippage });
 
       /// BUILD INPUT TOKEN AMOUNT OBJECT
-      /// Prepare structured input data for service layer processing
+      /// Prepare structured input data for service layer processing with proper token normalization
+      let normalizedFromSymbol = from.toUpperCase();
+      let normalizedToSymbol = to.toUpperCase();
+      
+      // Handle cases where tokens come as "VDOT" instead of "vDOT"
+      if (normalizedFromSymbol.startsWith('V') && normalizedFromSymbol.length > 1) {
+        normalizedFromSymbol = 'v' + normalizedFromSymbol.substring(1);
+      }
+      if (normalizedToSymbol.startsWith('V') && normalizedToSymbol.length > 1) {
+        normalizedToSymbol = 'v' + normalizedToSymbol.substring(1);
+      }
+      
       const inputTokenAmount = {
         amount,
         decimals: 12, // Standard precision for Polkadot ecosystem
         token: {
-          symbol: from.toUpperCase(), // Normalize to uppercase
+          symbol: normalizedFromSymbol,
           network: (network as 'bifrost' | 'moonbeam' | 'astar' | 'hydration' | 'polkadx' | 'moonriver') || 'bifrost'
         },
         formattedAmount: parseFloat(amount).toFixed(8) // Format for display
@@ -449,15 +472,15 @@ export class BifrostController {
       /// Delegate to service layer for business logic and exchange rate calculation
       const outputTokenAmount = await bifrostService.convertTokenAmount({
         amount,
-        fromToken: from,
-        toToken: to,
+        fromToken: normalizedFromSymbol,
+        toToken: normalizedToSymbol,
         network,
         slippageTolerance: slippage ? parseFloat(slippage) : undefined
       });
 
       /// FETCH EXCHANGE RATE FOR RESPONSE METADATA
       /// Determine which token is the vToken for rate lookup
-      const vToken = from.startsWith('v') ? from : to;
+      const vToken = normalizedFromSymbol.startsWith('v') ? normalizedFromSymbol : normalizedToSymbol;
       const exchangeRate = await bifrostService.getExchangeRate(vToken);
 
       /// BUILD CORE RESPONSE DATA
@@ -585,18 +608,22 @@ export class BifrostController {
       const validSortOrders = ['asc', 'desc'];
       
       if (!validSortFields.includes(sortBy as string)) {
-        throw new AppError('Invalid sortBy parameter', ErrorCode.VALIDATION_ERROR, 400);
+        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid sortBy parameter');
       }
       
       if (!validSortOrders.includes(sortOrder as string)) {
-        throw new AppError('Invalid sortOrder parameter', ErrorCode.VALIDATION_ERROR, 400);
+        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid sortOrder parameter');
       }
 
-      // Build filter options
+      // Build filter options with proper type casting
+      const networkArray = network ? 
+        (Array.isArray(network) ? network.map(n => String(n)) : [String(network)]) : 
+        undefined;
+      
       const filterOptions = {
         page: pageNum,
         limit: limitNum,
-        network: network ? (Array.isArray(network) ? network : [network]) : undefined,
+        network: networkArray,
         minApy: minApyNum,
         maxApy: maxApyNum,
         minTvl: minTvlNum,
@@ -619,7 +646,7 @@ export class BifrostController {
         totalTokens: vTokensData.pagination.total
       });
 
-      res.json({
+      const response = {
         success: true,
         data: vTokensData.data,
         pagination: vTokensData.pagination,
@@ -629,7 +656,9 @@ export class BifrostController {
           responseTime
         },
         timestamp: new Date().toISOString()
-      });
+      };
+      
+      res.json(response);
 
     } catch (error) {
       logger.error('Error in getVTokens controller', { 
@@ -658,20 +687,20 @@ export class BifrostController {
 
       // Validate symbol parameter
       if (!symbol || typeof symbol !== 'string') {
-        throw new AppError('Symbol parameter is required', ErrorCode.VALIDATION_ERROR, 400);
+        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Symbol parameter is required');
       }
 
       // Clean and validate symbol
       const cleanSymbol = symbol.trim().toUpperCase();
       if (!/^[A-Z0-9]{2,10}$/.test(cleanSymbol)) {
-        throw new AppError('Invalid symbol format', ErrorCode.VALIDATION_ERROR, 400);
+        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid symbol format');
       }
 
       // Get detailed vToken data from service
       const vTokenDetail = await bifrostService.getVTokenDetail(cleanSymbol);
       
       if (!vTokenDetail) {
-        throw new AppError(`vToken ${cleanSymbol} not found`, ErrorCode.NOT_FOUND, 404);
+        throw AppError.newError404(ErrorCode.NOT_FOUND, `vToken ${cleanSymbol} not found`);
       }
       
       const endTime = performance.now();

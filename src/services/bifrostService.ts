@@ -51,6 +51,7 @@ class BifrostService {
   /// **Structure**: Map<cacheKey, {data: any, timestamp: number}>
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
   
+  
   /// Specialized cache for exchange rate data with enhanced metadata
   /// **TTL**: 5 minutes (exchange rates change frequently)
   /// **Structure**: Map<tokenPair, ConversionCache>
@@ -209,6 +210,10 @@ class BifrostService {
 
       // Cache successful response for future requests
       this.setCache(cacheKey, { data: response.data, timestamp: Date.now() });
+      
+      // Log successful data fetch
+      logger.debug('Successfully fetched Bifrost site data');
+      
       return response.data;
     } catch (error) {
       // Log error details for debugging (sanitized by logger)
@@ -220,8 +225,41 @@ class BifrostService {
   }
 
   transformToTokenYield(rawData: BifrostRawData, symbol: string): TokenYield | null {
-    const tokenData = rawData[symbol];
-    if (!tokenData) return null;
+    // Try multiple formats to find the token data
+    let tokenData = rawData[symbol];
+    let checkedFormats = [symbol];
+    
+    // The Bifrost API uses "VDOT", "VKSM" format (uppercase V + uppercase base token)
+    if (!tokenData) {
+      const vTokenFormat = symbol.toLowerCase().startsWith('v') ? 
+        'V' + symbol.substring(1).toUpperCase() : 
+        symbol.toUpperCase();
+      
+      tokenData = rawData[vTokenFormat];
+      checkedFormats.push(vTokenFormat);
+    }
+    
+    // If still not found, try other common formats
+    if (!tokenData) {
+      const upperSymbol = symbol.toLowerCase().startsWith('v') ? 
+        'V' + symbol.substring(1).toUpperCase() : 
+        symbol.toUpperCase();
+      tokenData = rawData[upperSymbol];
+      checkedFormats.push(upperSymbol);
+    }
+    
+    if (!tokenData && symbol !== symbol.toLowerCase()) {
+      const lowerSymbol = symbol.toLowerCase();
+      tokenData = rawData[lowerSymbol];
+      checkedFormats.push(lowerSymbol);
+    }
+    
+    if (!tokenData) {
+      const availableKeys = Object.keys(rawData).filter(k => typeof rawData[k] === 'object' && rawData[k] !== null);
+      logger.debug(`Token data not found for ${symbol}, available object keys:`, availableKeys);
+      logger.debug(`Checked formats:`, checkedFormats);
+      return null;
+    }
 
     // Handle different APY structures based on token type
     let apy = 0;
@@ -292,7 +330,12 @@ class BifrostService {
   }
 
   async getExchangeRate(tokenSymbol: string): Promise<ExchangeRate> {
-    const normalizedSymbol = tokenSymbol.toUpperCase();
+    // Enhanced normalization to handle VDOT -> vDOT case properly
+    let normalizedSymbol = tokenSymbol.toUpperCase();
+    // Handle case where token comes as "VDOT" instead of "vDOT"
+    if (normalizedSymbol.startsWith('V') && normalizedSymbol.length > 1) {
+      normalizedSymbol = 'v' + normalizedSymbol.substring(1);
+    }
     const cacheKey = `exchange-rate-${normalizedSymbol}`;
     
     // Check cache first
@@ -305,23 +348,30 @@ class BifrostService {
     try {
       // Try staking API first for exchange ratios
       const stakingData = await this.getStakingData();
-      const tokenData = stakingData.supportedAssets.find(
-        asset => asset.symbol.toUpperCase() === normalizedSymbol
-      );
+      let tokenData = null;
+      
+      if (stakingData && stakingData.supportedAssets && Array.isArray(stakingData.supportedAssets)) {
+        tokenData = stakingData.supportedAssets.find(
+          asset => asset && asset.symbol && asset.symbol.toUpperCase() === normalizedSymbol
+        );
+      }
 
-      if (tokenData) {
+      if (tokenData && tokenData.exchangeRatio) {
         const exchangeRate = this.createExchangeRateFromStaking(tokenData, normalizedSymbol);
         this.setExchangeRateCache(cacheKey, exchangeRate);
         return exchangeRate;
       }
 
-      // Fallback to site API
+      // Fallback to site API - always try this as primary method now
       const siteData = await this.getSiteData();
       const fallbackRate = this.createExchangeRateFromSite(siteData, normalizedSymbol);
       if (fallbackRate) {
         this.setExchangeRateCache(cacheKey, fallbackRate);
         return fallbackRate;
       }
+      
+      logger.debug(`No exchange rate found for ${normalizedSymbol} in either API`);
+      logger.debug('Available site data keys:', Object.keys(siteData).filter(k => typeof siteData[k] === 'object' && k !== 'version'));
 
       throw new Error(`Token ${normalizedSymbol} not found in any API`);
     } catch (error) {
@@ -351,13 +401,48 @@ class BifrostService {
   }
 
   private createExchangeRateFromSite(siteData: BifrostRawData, symbol: string): ExchangeRate | null {
-    const tokenInfo = siteData[symbol];
-    if (!tokenInfo || typeof tokenInfo === 'number') return null;
+    // Handle array-like structure similar to transformToTokenYield
+    let actualData: any = siteData;
+    if (Object.keys(siteData).some(k => /^\d+$/.test(k))) {
+      const dataValues = Object.values(siteData);
+      actualData = {};
+      dataValues.forEach((item: any) => {
+        if (item && typeof item === 'object' && item.symbol) {
+          actualData[item.symbol] = item;
+        }
+      });
+    }
+    
+    // Check multiple formats: original, uppercase V version, lowercase v version
+    const upperSymbol = symbol.toLowerCase().startsWith('v') ? 
+      'V' + symbol.substring(1).toUpperCase() : 
+      (symbol.toUpperCase().startsWith('V') ? symbol.toUpperCase() : 'V' + symbol.toUpperCase());
+    const lowerSymbol = symbol.toLowerCase().startsWith('v') ? symbol : 'v' + symbol.substring(1);
+    
+    let tokenInfo = actualData[symbol] || actualData[upperSymbol] || actualData[lowerSymbol];
+    
+    // Additional fallback: try base token name with V prefix
+    if (!tokenInfo && symbol.length > 1) {
+      const baseToken = symbol.startsWith('v') ? symbol.substring(1) : symbol;
+      tokenInfo = actualData['V' + baseToken.toUpperCase()] || actualData['v' + baseToken.toUpperCase()];
+    }
+    
+    if (!tokenInfo || typeof tokenInfo === 'number') {
+      const availableKeys = Object.keys(actualData).filter(k => k.startsWith('V') || k.startsWith('v'));
+      logger.debug(`No token info found for ${symbol} (checked: ${symbol}, ${upperSymbol}, ${lowerSymbol})`, { availableKeys });
+      
+      // Let's also check what a working token looks like
+      const vdotExample = actualData['VDOT'] || actualData['vDOT'];
+      if (vdotExample) {
+        logger.debug('Example token structure:', Object.keys(vdotExample));
+      }
+      return null;
+    }
 
     // For site API, we need to calculate exchange rate from APY and other factors
     // This is a simplified calculation - in production, you'd want more sophisticated logic
     const estimatedRate = 0.95; // Default estimated rate
-    const baseSymbol = symbol.startsWith('v') ? symbol.slice(1) : symbol;
+    const baseSymbol = symbol.startsWith('v') ? symbol.slice(1) : symbol.substring(1);
 
     return {
       baseToken: {
@@ -365,7 +450,7 @@ class BifrostService {
         network: 'bifrost'
       },
       vToken: {
-        symbol: symbol,
+        symbol: lowerSymbol, // Always return in vXXX format
         network: 'bifrost'
       },
       rate: estimatedRate,
@@ -454,12 +539,52 @@ class BifrostService {
   // Helper method to get all supported tokens
   async getSupportedTokens(): Promise<string[]> {
     try {
-      const stakingData = await this.getStakingData();
-      return stakingData.supportedAssets.map(asset => asset.symbol.toUpperCase());
+      // Get both APIs to ensure we have all supported tokens
+      const [stakingData, siteData] = await Promise.all([
+        this.getStakingData().catch(() => null),
+        this.getSiteData().catch(() => null)
+      ]);
+      
+      // Combine tokens from both sources
+      const tokens = new Set<string>();
+      
+      // Add tokens from staking API (normalize to vXXX format)
+      if (stakingData && stakingData.supportedAssets && Array.isArray(stakingData.supportedAssets)) {
+        stakingData.supportedAssets.forEach(asset => {
+          if (asset && asset.symbol) {
+            const symbol = asset.symbol.toUpperCase();
+            const normalizedSymbol = symbol.startsWith('V') ? 'v' + symbol.substring(1) : symbol;
+            tokens.add(normalizedSymbol);
+          }
+        });
+      } else {
+        logger.debug('Staking data structure', { type: typeof stakingData, keys: stakingData ? Object.keys(stakingData) : null });
+      }
+      
+      // Add tokens from site API (convert from VXXX to vXXX format)
+      if (siteData) {
+        Object.keys(siteData).forEach(key => {
+          if (key.startsWith('V') && key.length > 1 && typeof siteData[key] === 'object') {
+            const normalizedSymbol = 'v' + key.substring(1);
+            tokens.add(normalizedSymbol);
+          }
+        });
+      }
+      
+      const result = Array.from(tokens).sort();
+      logger.debug('Supported tokens from APIs:', result);
+      
+      // If no tokens found from APIs, return the comprehensive default list
+      if (result.length === 0) {
+        logger.warn('No tokens found from APIs, using fallback list');
+        return ['vKSM', 'vDOT', 'vBNC', 'vETH', 'vMANTA', 'vASTR', 'vETH2', 'vFIL', 'vPHA', 'vMOVR', 'vGLMR']; 
+      }
+      
+      return result;
     } catch (error) {
       logger.error('Failed to get supported tokens', { error: (error as Error).message });
-      // Return default list if API fails
-      return ['vKSM', 'vDOT', 'vBNC', 'vETH', 'vMANTA', 'vASTR'];
+      // Return comprehensive default list based on both APIs
+      return ['vKSM', 'vDOT', 'vBNC', 'vETH', 'vMANTA', 'vASTR', 'vETH2', 'vFIL', 'vPHA', 'vMOVR', 'vGLMR'];
     }
   }
 
@@ -517,18 +642,24 @@ class BifrostService {
       return false;
     }
 
-    /// LAYER 5: External Data Fetching
-    /// Get current list of supported tokens (cached for performance)
-    const supportedTokens = await this.getSupportedTokens();
-    const normalizedFrom = fromToken.toUpperCase();
-    const normalizedTo = toToken.toUpperCase();
+    /// Enhanced normalization to handle VDOT -> vDOT case properly
+    let normalizedFrom = fromToken.toUpperCase();
+    let normalizedTo = toToken.toUpperCase();
+    
+    // Handle cases where tokens come as "VDOT" instead of "vDOT"
+    if (normalizedFrom.startsWith('V') && normalizedFrom.length > 1) {
+      normalizedFrom = 'v' + normalizedFrom.substring(1);
+    }
+    if (normalizedTo.startsWith('V') && normalizedTo.length > 1) {
+      normalizedTo = 'v' + normalizedTo.substring(1);
+    }
 
-    /// LAYER 6: Token Type Classification
-    /// Identify vTokens (start with 'V' + additional chars) vs base tokens
-    const isFromVToken = normalizedFrom.startsWith('V') && normalizedFrom.length > 1;
-    const isToVToken = normalizedTo.startsWith('V') && normalizedTo.length > 1;
+    /// LAYER 5: Token Type Classification
+    /// Identify vTokens (start with 'v' + additional chars) vs base tokens
+    const isFromVToken = normalizedFrom.startsWith('v') && normalizedFrom.length > 1;
+    const isToVToken = normalizedTo.startsWith('v') && normalizedTo.length > 1;
 
-    /// LAYER 7: Business Rules Validation
+    /// LAYER 6: Business Rules Validation
     /// Enforce Bifrost protocol conversion rules
     if (isFromVToken && isToVToken) {
       return false; // Cannot convert between two vTokens
@@ -538,25 +669,27 @@ class BifrostService {
       return false; // Cannot convert between two base tokens
     }
 
-    /// LAYER 8: Token Extraction and Validation
+    /// LAYER 7: Token Extraction and Validation
     /// Extract vToken and base token from the pair for validation
     const vToken = isFromVToken ? normalizedFrom : normalizedTo;
     const baseToken = isFromVToken ? normalizedTo : normalizedFrom;
 
-    /// LAYER 9: vToken Format Validation
-    /// Ensure vToken has valid format after 'V' prefix
+    /// LAYER 8: vToken Format Validation
+    /// Ensure vToken has valid format after 'v' prefix
     if (vToken.length < 2) {
       return false;
     }
 
-    /// LAYER 10: Support List Validation
-    /// Verify vToken exists in official Bifrost supported tokens
-    const vTokenSupported = supportedTokens.includes(vToken);
+    /// LAYER 9: Direct Support List Validation using known tokens
+    /// Use the comprehensive list instead of dynamic API calls to avoid issues
+    const knownSupportedTokens = ['vKSM', 'vDOT', 'vBNC', 'vETH', 'vMANTA', 'vASTR', 'vETH2', 'vFIL', 'vPHA', 'vMOVR', 'vGLMR'];
+    const vTokenSupported = knownSupportedTokens.includes(vToken);
     if (!vTokenSupported) {
+      logger.debug(`vToken ${vToken} not in supported list`, { knownSupportedTokens });
       return false;
     }
 
-    /// LAYER 11: Token Pair Relationship Validation
+    /// LAYER 10: Token Pair Relationship Validation
     /// Verify base token matches the vToken's underlying asset (vDOT ↔ DOT)
     const expectedBaseToken = vToken.substring(1);
     
@@ -566,7 +699,11 @@ class BifrostService {
     }
 
     /// FINAL VALIDATION: Exact Match Check
-    return baseToken === expectedBaseToken;
+    const isValid = baseToken === expectedBaseToken;
+    logger.debug(`Token pair validation: ${fromToken} -> ${toToken}`, {
+      normalizedFrom, normalizedTo, vToken, baseToken, expectedBaseToken, isValid
+    });
+    return isValid;
   }
 
   // ============================================================================
@@ -592,9 +729,9 @@ class BifrostService {
     
     // Check cache first
     const cached = this.cache.get(cacheKey);
-    if (cached) {
+    if (cached && cached.data) {
       logger.debug('Returning cached vTokens list');
-      return cached;
+      return cached.data;
     }
 
     try {
@@ -664,9 +801,9 @@ class BifrostService {
     
     // Check cache first (5 minutes TTL for fresher data)
     const cached = this.cache.get(cacheKey);
-    if (cached) {
+    if (cached && cached.data) {
       logger.debug('Returning cached vToken detail', { symbol });
-      return cached;
+      return cached.data;
     }
 
     try {
@@ -923,7 +1060,7 @@ class BifrostService {
         reward: parseFloat(siteData?.apyReward || '0'),
         source: 'api' as const,
         components: { staking: parseFloat(siteData?.apy || '0') },
-        fees: { protocol: 0.1, validator: 5, slashing: 0.01, gas: 0.001 },
+        feeBreakdown: { protocol: 0.1, validator: 5, slashing: 0.01, gas: 0.001 },
         netApy: parseFloat(siteData?.apy || '0') * 0.95,
         historical: [],
         projections: { conservative: 10, expected: 12, optimistic: 15, timeframe: '1y' }

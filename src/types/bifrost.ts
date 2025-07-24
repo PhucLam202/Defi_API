@@ -607,7 +607,7 @@ export interface APYBreakdownDetailed extends APYBreakdown {
     other?: number; // Other reward sources
   };
   
-  fees: {
+  feeBreakdown: {
     protocol: number; // Protocol fee percentage
     validator: number; // Validator commission
     slashing: number; // Expected slashing losses
@@ -786,7 +786,7 @@ export interface StakingDetail {
 }
 
 export interface HolderAnalysis extends HolderInfo {
-  distribution: {
+  distributionByRange: {
     range: string; // e.g., "0-1", "1-10", etc.
     holders: number;
     percentage: number;
