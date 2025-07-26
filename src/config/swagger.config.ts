@@ -133,10 +133,10 @@ curl -X GET "http://localhost:3000/api/v1/bifrost/convert?amount=100&from=vKSM&t
         name: "Stablecoins",
         description: "Comprehensive stablecoin data across multiple chains with market analytics, circulation data, and risk metrics"
       },
-      {
-        name: "Analytics",
-        description: "Advanced analytics and market intelligence"
-      }
+      // {
+      //   name: "Analytics",
+      //   description: "Advanced analytics and market intelligence"
+      // }
     ],
     externalDocs: {
       description: "Find more information and API guides",

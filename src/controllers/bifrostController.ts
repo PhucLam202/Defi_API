@@ -125,7 +125,6 @@ export class BifrostController {
       
       /// DATA TRANSFORMATION: Convert raw API data to standardized yield objects
       /// Filter out null results from tokens with incomplete data
-      logger.debug('Available site data keys:', Object.keys(rawData).filter(k => k.startsWith('V') || k.startsWith('v')));
       let yields = supportedTokens
         .map(token => {
           const result = bifrostService.transformToTokenYield(rawData, token);
@@ -361,8 +360,19 @@ export class BifrostController {
   /// ## Token Amount Conversion Controller
   /// 
   /// Handles token conversion requests between vTokens and their underlying base tokens.
-  /// This is the main endpoint for calculating conversion amounts with comprehensive
-  /// validation, security checks, and optional features like slippage protection.
+  /// Uses real-time exchange rates from Bifrost Staking API for accurate conversions.
+  /// 
+  /// **Exchange Rate Logic**:
+  /// - Primary: Bifrost Staking API (exchangeRatio field)
+  /// - Fallback: Site API with TVL/TVM calculation
+  /// - Rate format: 1 vToken = X base tokens (e.g., 1 vDOT = 1.529 DOT)
+  /// 
+  /// **Conversion Examples** (using real rates as of 2025-07-26):
+  /// - 1 DOT → 0.654 vDOT (1 ÷ 1.529396273674918)
+  /// - 1 vDOT → 1.529 DOT (exchangeRatio from API)
+  /// 
+  /// This endpoint provides comprehensive validation, security checks, and optional 
+  /// features like slippage protection.
   /// 
   /// **@param {Request} req** - Express request object with query parameters
   /// **@param {Response} res** - Express response object for API response

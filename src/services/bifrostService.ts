@@ -209,7 +209,7 @@ class BifrostService {
       });
 
       // Cache successful response for future requests
-      this.setCache(cacheKey, { data: response.data, timestamp: Date.now() });
+      this.setCache(cacheKey, response.data);
       
       // Log successful data fetch
       logger.debug('Successfully fetched Bifrost site data');
@@ -229,29 +229,38 @@ class BifrostService {
     let tokenData = rawData[symbol];
     let checkedFormats = [symbol];
     
-    // The Bifrost API uses "VDOT", "VKSM" format (uppercase V + uppercase base token)
+    // The Bifrost API uses "vKSM", "vDOT" format (lowercase v + uppercase base token)
     if (!tokenData) {
       const vTokenFormat = symbol.toLowerCase().startsWith('v') ? 
-        'V' + symbol.substring(1).toUpperCase() : 
-        symbol.toUpperCase();
+        'v' + symbol.substring(1).toUpperCase() : 
+        'v' + symbol.toUpperCase();
       
       tokenData = rawData[vTokenFormat];
       checkedFormats.push(vTokenFormat);
     }
     
-    // If still not found, try other common formats
+    // Also try the old VDOT format (uppercase V + uppercase base token) for backwards compatibility
     if (!tokenData) {
-      const upperSymbol = symbol.toLowerCase().startsWith('v') ? 
+      const upperVTokenFormat = symbol.toLowerCase().startsWith('v') ? 
         'V' + symbol.substring(1).toUpperCase() : 
-        symbol.toUpperCase();
-      tokenData = rawData[upperSymbol];
-      checkedFormats.push(upperSymbol);
+        'V' + symbol.toUpperCase();
+      
+      tokenData = rawData[upperVTokenFormat];
+      checkedFormats.push(upperVTokenFormat);
     }
     
+    // Try exact case match
     if (!tokenData && symbol !== symbol.toLowerCase()) {
       const lowerSymbol = symbol.toLowerCase();
       tokenData = rawData[lowerSymbol];
       checkedFormats.push(lowerSymbol);
+    }
+    
+    // Try uppercase version
+    if (!tokenData) {
+      const upperSymbol = symbol.toUpperCase();
+      tokenData = rawData[upperSymbol];
+      checkedFormats.push(upperSymbol);
     }
     
     if (!tokenData) {
@@ -351,22 +360,36 @@ class BifrostService {
       let tokenData = null;
       
       if (stakingData && stakingData.supportedAssets && Array.isArray(stakingData.supportedAssets)) {
+        // Debug: log available symbols in staking data
+        const availableSymbols = stakingData.supportedAssets.map(asset => asset?.symbol).filter(Boolean);
+        logger.debug(`Looking for ${normalizedSymbol} in staking data. Available symbols:`, availableSymbols);
+        
         tokenData = stakingData.supportedAssets.find(
-          asset => asset && asset.symbol && asset.symbol.toUpperCase() === normalizedSymbol
+          asset => asset && asset.symbol && asset.symbol === normalizedSymbol
         );
+        
+        if (!tokenData) {
+          // Try uppercase comparison as fallback
+          tokenData = stakingData.supportedAssets.find(
+            asset => asset && asset.symbol && asset.symbol.toUpperCase() === normalizedSymbol.toUpperCase()
+          );
+        }
       }
 
       if (tokenData && tokenData.exchangeRatio) {
         const exchangeRate = this.createExchangeRateFromStaking(tokenData, normalizedSymbol);
         this.setExchangeRateCache(cacheKey, exchangeRate);
+        logger.info(`Using staking API exchange rate for ${normalizedSymbol}: ${tokenData.exchangeRatio}`);
         return exchangeRate;
       }
 
-      // Fallback to site API - always try this as primary method now
+      // Fallback to site API only if staking API fails
+      logger.warn(`No staking data found for ${normalizedSymbol}, falling back to site API`);
       const siteData = await this.getSiteData();
       const fallbackRate = this.createExchangeRateFromSite(siteData, normalizedSymbol);
       if (fallbackRate) {
         this.setExchangeRateCache(cacheKey, fallbackRate);
+        logger.info(`Using site API fallback rate for ${normalizedSymbol}: ${fallbackRate.rate}`);
         return fallbackRate;
       }
       
@@ -439,9 +462,22 @@ class BifrostService {
       return null;
     }
 
-    // For site API, we need to calculate exchange rate from APY and other factors
-    // This is a simplified calculation - in production, you'd want more sophisticated logic
-    const estimatedRate = 0.95; // Default estimated rate
+    // For site API, we need to extract or estimate exchange rate
+    // Look for exchange rate data in the token info
+    let estimatedRate = 0.95; // Default fallback rate
+    
+    // Try to extract rate from TVL and TVM (Total Value Minted) if available
+    if (tokenInfo.tvl && tokenInfo.tvm && tokenInfo.tvl > 0 && tokenInfo.tvm > 0) {
+      // Rough calculation: rate = TVL / TVM (1 vToken = TVL/TVM base tokens)
+      const calculatedRate = tokenInfo.tvl / tokenInfo.tvm;
+      if (calculatedRate > 0.5 && calculatedRate < 5) { // Sanity check
+        estimatedRate = calculatedRate;
+        logger.info(`Calculated exchange rate from TVL/TVM for ${symbol}: ${estimatedRate}`);
+      } else {
+        logger.warn(`Calculated rate ${calculatedRate} seems unrealistic for ${symbol}, using default`);
+      }
+    }
+    
     const baseSymbol = symbol.startsWith('v') ? symbol.slice(1) : symbol.substring(1);
 
     return {
@@ -457,7 +493,7 @@ class BifrostService {
       inverseRate: 1 / estimatedRate,
       timestamp: new Date().toISOString(),
       source: 'frontend_api',
-      confidence: 80 // Lower confidence for estimated rates
+      confidence: tokenInfo.tvl && tokenInfo.tvm ? 85 : 70 // Higher confidence if calculated from real data
     };
   }
 
