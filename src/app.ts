@@ -38,6 +38,8 @@ app.use(helmet({
         "https://unpkg.com",
         "https://fonts.googleapis.com",
         "https://fonts.gstatic.com",
+        "https://*.railway.app",
+        "https://*.up.railway.app",
         "wss:",
         "ws:"
       ],
@@ -156,7 +158,7 @@ app.use('/docs', apiReference({
   `
 }));
   // src/routes/v1/index.ts
-app.get('/health', (req, res) => {
+app.get('/health', (_, res) => {
     res.status(200).json({
       status: 'healthy',
       timestamp: new Date().toISOString()
