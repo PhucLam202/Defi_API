@@ -56,7 +56,7 @@ We aggregate data from **15+ top-tier DeFi protocols** including:
     servers: [
       {
         url: process.env.NODE_ENV === 'production' 
-          ? `${process.env.RAILWAY_PUBLIC_DOMAIN}` 
+          ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` 
           : `http://localhost:${process.env.PORT || 3000}`,
         description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
       }
