@@ -32,6 +32,8 @@ export const ErrorMessages: { [key in ErrorCode]: string } = {
   [ErrorCode.QUOTA_EXCEEDED]: "API quota exceeded",
   [ErrorCode.RATE_LIMITED]: "Request rate limit exceeded",
 
+  [ErrorCode.EXTERNAL_API_ERROR]: "External API error occurred",
+
   // AI/ML Related Errors
   [ErrorCode.INVALID_AI_RESPONSE]: "Invalid AI response received",
   [ErrorCode.AI_MODEL_NOT_FOUND]: "AI model not found",

@@ -51,18 +51,23 @@ To democratize access to DeFi data across chains, empowering developers to build
 ## 🚀 Quick Start
 
 ### Essential Endpoints
-1. **All Stablecoins**: \`GET /api/v1/stablecoins\` - Comprehensive stablecoin data
-2. **Stablecoin by Symbol**: \`GET /api/v1/stablecoins/symbol/USDT\` - Specific token info
-3. **Yield Data**: \`GET /api/v1/yields\` - Cross-chain yield opportunities
+1. **Bifrost Yields**: \`GET /api/v1/bifrost/yields\` - Liquid staking yields data
+2. **Exchange Rates**: \`GET /api/v1/bifrost/exchange-rates/vKSM\` - vToken exchange rates
+3. **Token Conversion**: \`GET /api/v1/bifrost/convert?amount=100&from=vKSM&to=KSM\` - Convert tokens
+4. **All Stablecoins**: \`GET /api/v1/stablecoins\` - Comprehensive stablecoin data
 
 ### Example Usage
 \`\`\`bash
-# Get all stablecoins with market data
-curl -X GET "http://localhost:3000/api/v1/stablecoins" \\
+# Get Bifrost yields data
+curl -X GET "http://localhost:3000/api/v1/bifrost/yields" \\
   -H "Accept: application/json"
 
-# Get specific stablecoin by symbol
-curl -X GET "http://localhost:3000/api/v1/stablecoins/symbol/USDT" \\
+# Get vToken exchange rate
+curl -X GET "http://localhost:3000/api/v1/bifrost/exchange-rates/vKSM" \\
+  -H "Accept: application/json"
+
+# Convert vKSM to KSM
+curl -X GET "http://localhost:3000/api/v1/bifrost/convert?amount=100&from=vKSM&to=KSM" \\
   -H "Accept: application/json"
 \`\`\`
 
@@ -119,26 +124,41 @@ curl -X GET "http://localhost:3000/api/v1/stablecoins/symbol/USDT" \\
         url: "https://opensource.org/licenses/MIT"
       }
     },
+    servers: [
+      {
+        url: "http://localhost:3000",
+        description: "Development server"
+      },
+      {
+        url: "https://api.liquidsync.dev",
+        description: "Production server"
+      }
+    ],
     tags: [
       {
+        name: "Bifrost Protocol",
+        description: "Complete Bifrost liquid staking protocol API including yields data and vToken exchange rates with conversion services"
+      },
+      {
+        name: "TVL",
+        description: "Total Value Locked analytics and blockchain ecosystem analysis"
+      },
+      {
         name: "Stablecoins",
-        description: "Comprehensive stablecoin data across multiple chains with market analytics, circulation data, and risk metrics"
+        description: "Comprehensive stablecoin ecosystem analytics"
       },
-      {
-        name: "Yields",
-        description: "Cross-chain yield data and DeFi protocol analytics"
-      },
-      {
-        name: "Analytics",
-        description: "Advanced analytics and market intelligence"
-      }
     ],
     externalDocs: {
       description: "Find more information and API guides",
       url: "https://github.com/PhucLam202/defi-data-api"
     }
   },
-  apis: ["./src/routes/**/*.ts", "./src/controllers/**/*.ts"],
+  apis: [
+    "./src/routes/**/*.ts",
+    "./src/routes/**/*.js", 
+    "./src/controllers/**/*.ts",
+    "./src/controllers/**/*.js"
+  ],
 };
 
-export const specs = swaggerJSDoc(options);
+export const openapiSpecification = swaggerJSDoc(options);
