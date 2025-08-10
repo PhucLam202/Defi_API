@@ -66,4 +66,5 @@ router.use("/stablecoins", stablecoinRoutes);
 /// **Endpoints**: /overview, /dominance, /trending, /movers, /health
 router.use("/defi/tvl", marketIntelligenceRoutes);
 
+
 export default router;
