@@ -124,26 +124,45 @@ curl -X GET "http://localhost:3000/api/v1/bifrost/convert?amount=100&from=vKSM&t
         url: "https://opensource.org/licenses/MIT"
       }
     },
+    servers: [
+      {
+        url: "http://localhost:3000",
+        description: "Development server"
+      },
+      {
+        url: "https://api.liquidsync.dev",
+        description: "Production server"
+      }
+    ],
     tags: [
       {
         name: "Bifrost Protocol",
         description: "Complete Bifrost liquid staking protocol API including yields data and vToken exchange rates with conversion services"
       },
       {
-        name: "Stablecoins",
-        description: "Comprehensive stablecoin data across multiple chains with market analytics, circulation data, and risk metrics"
+        name: "TVL",
+        description: "Total Value Locked analytics and blockchain ecosystem analysis"
       },
-      // {
-      //   name: "Analytics",
-      //   description: "Advanced analytics and market intelligence"
-      // }
+      {
+        name: "Stablecoins",
+        description: "Comprehensive stablecoin ecosystem analytics"
+      },
+      {
+        name: "vTokens Management",
+        description: "Comprehensive vToken management and analytics"
+      }
     ],
     externalDocs: {
       description: "Find more information and API guides",
       url: "https://github.com/PhucLam202/defi-data-api"
     }
   },
-  apis: ["./src/routes/**/*.ts", "./src/controllers/**/*.ts"],
+  apis: [
+    "./src/routes/**/*.ts",
+    "./src/routes/**/*.js", 
+    "./src/controllers/**/*.ts",
+    "./src/controllers/**/*.js"
+  ],
 };
 
-export const specs = swaggerJSDoc(options);
+export const openapiSpecification = swaggerJSDoc(options);

@@ -11,7 +11,8 @@
 /// 
 /// ## Available Route Modules:
 /// - **/bifrost**: Unified Bifrost protocol endpoints (yields + exchange rates)
-/// - **/stablecoins**: Stablecoin ecosystem data endpoints (stablecoinRoutes)
+/// - **/stablecoins**: Stablecoin ecosystem data endpoints (stablecoinRoutes)  
+/// - **/defi/tvl**: TVL intelligence endpoints (marketIntelligenceRoutes)
 /// 
 /// ## Security Considerations:
 /// - All routes inherit middleware from parent router
@@ -21,13 +22,15 @@
 /// 
 /// ## API Endpoint Structure:
 /// ```
-/// /api/v1/bifrost/*       - Unified Bifrost protocol (yields + exchange rates)
-/// /api/v1/stablecoins/*   - Stablecoin market data
+/// /api/v1/bifrost/*         - Unified Bifrost protocol (yields + exchange rates)
+/// /api/v1/stablecoins/*     - Stablecoin market data
+/// /api/v1/defi/tvl/*        - TVL intelligence endpoints
 /// ```
 
 import express, { Router } from "express";
 import stablecoinRoutes from "./stablecoin.js";
 import bifrostRoutes from "./bifrost.js";
+import marketIntelligenceRoutes from "./marketIntelligence.js";
 
 /// ## Main V1 Router Configuration
 /// 
@@ -37,6 +40,7 @@ import bifrostRoutes from "./bifrost.js";
 /// ### Route Delegation Strategy:
 /// - **bifrost**: Complete Bifrost protocol including yields and exchange rates
 /// - **stablecoins**: Comprehensive stablecoin ecosystem analytics
+/// - **defi/tvl**: Intelligent TVL analysis with insights and recommendations
 /// 
 /// ### Router Middleware Chain:
 /// 1. Global middleware (applied by parent)
@@ -55,5 +59,11 @@ router.use("/bifrost", bifrostRoutes);
 /// Handles all stablecoin ecosystem data requests
 /// **Base Path**: /api/v1/stablecoins/*
 router.use("/stablecoins", stablecoinRoutes);
+
+/// ROUTE DELEGATION: TVL Intelligence endpoints  
+/// Handles intelligent TVL analysis with insights and recommendations
+/// **Base Path**: /api/v1/defi/tvl/*
+/// **Endpoints**: /overview, /dominance, /trending, /movers, /health
+router.use("/defi/tvl", marketIntelligenceRoutes);
 
 export default router;

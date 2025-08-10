@@ -44,13 +44,6 @@ const router: ExpressRouter = Router();
 
 /**
  * @swagger
- * tags:
- *   name: Bifrost Protocol
- *   description: Complete Bifrost liquid staking protocol API including yields and exchange rates
- */
-
-/**
- * @swagger
  * components:
  *   schemas:
  *     TokenYield:
