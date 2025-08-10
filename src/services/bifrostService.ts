@@ -376,11 +376,17 @@ class BifrostService {
         }
       }
 
-      if (tokenData && tokenData.exchangeRatio) {
+      // Prioritize exchangeRatio from Bifrost API as primary source
+      if (tokenData && tokenData.exchangeRatio && typeof tokenData.exchangeRatio === 'number' && tokenData.exchangeRatio > 0) {
         const exchangeRate = this.createExchangeRateFromStaking(tokenData, normalizedSymbol);
         this.setExchangeRateCache(cacheKey, exchangeRate);
-        logger.info(`Using staking API exchange rate for ${normalizedSymbol}: ${tokenData.exchangeRatio}`);
+        logger.info(`Using Bifrost API exchangeRatio for ${normalizedSymbol}: ${tokenData.exchangeRatio} (source: staking API)`);
         return exchangeRate;
+      }
+
+      // Log if exchangeRatio is missing or invalid
+      if (tokenData && (!tokenData.exchangeRatio || tokenData.exchangeRatio <= 0)) {
+        logger.warn(`Token ${normalizedSymbol} found but exchangeRatio is invalid: ${tokenData.exchangeRatio}`);
       }
 
       // Fallback to site API only if staking API fails
@@ -406,6 +412,13 @@ class BifrostService {
   private createExchangeRateFromStaking(tokenData: any, symbol: string): ExchangeRate {
     const baseSymbol = symbol.startsWith('v') ? symbol.slice(1) : symbol;
     
+    // Validate exchangeRatio is present and valid
+    if (!tokenData.exchangeRatio || typeof tokenData.exchangeRatio !== 'number' || tokenData.exchangeRatio <= 0) {
+      throw new Error(`Invalid exchangeRatio for ${symbol}: ${tokenData.exchangeRatio}`);
+    }
+    
+    const exchangeRatio = tokenData.exchangeRatio;
+    
     return {
       baseToken: {
         symbol: baseSymbol,
@@ -415,11 +428,11 @@ class BifrostService {
         symbol: symbol,
         network: 'bifrost'
       },
-      rate: tokenData.exchangeRatio, // vToken to base token
-      inverseRate: 1 / tokenData.exchangeRatio, // base token to vToken
+      rate: exchangeRatio, // Direct from Bifrost API exchangeRatio field
+      inverseRate: 1 / exchangeRatio, // Calculated inverse rate
       timestamp: new Date().toISOString(),
-      source: 'frontend_api',
-      confidence: 95
+      source: 'runtime', // Updated to reflect it's from the official runtime API
+      confidence: 98 // Higher confidence for direct API data
     };
   }
 
@@ -512,7 +525,7 @@ class BifrostService {
     }
 
     try {
-      // Determine which token is the vToken
+      // Determine which token is the vToken and get enhanced exchange rate
       let exchangeRate: ExchangeRate;
       let isFromVToken = fromToken.startsWith('v');
       let isToVToken = toToken.startsWith('v');
@@ -526,23 +539,45 @@ class BifrostService {
       } else {
         throw AppError.newError400(ErrorCode.INVALID_INPUT, 'Conversion must be between vToken and base token');
       }
-
-      // Calculate output amount
-      let outputAmount: number;
-      if (isFromVToken && !isToVToken) {
-        // vToken to base: multiply by rate
-        outputAmount = inputAmount * exchangeRate.rate;
-      } else {
-        // base to vToken: multiply by inverse rate
-        outputAmount = inputAmount * exchangeRate.inverseRate;
+      // Validate exchange rate data quality
+      if (!exchangeRate.rate || exchangeRate.rate <= 0) {
+        throw new Error(`Invalid exchange rate received: ${exchangeRate.rate}`);
       }
 
-      // Create result with precision handling
+      // Calculate output amount using enhanced exchange rate logic
+      let outputAmount: number;
+      let calculationMethod: string;
+      if (isFromVToken && !isToVToken) {
+        // vToken to base: multiply by exchangeRatio from Bifrost API
+        outputAmount = inputAmount * exchangeRate.rate;
+        calculationMethod = `vToken to base using rate ${exchangeRate.rate}`;
+      } else {
+        // base to vToken: multiply by inverse rate (1/exchangeRatio)
+        outputAmount = inputAmount * exchangeRate.inverseRate;
+        calculationMethod = `base to vToken using inverse rate ${exchangeRate.inverseRate}`;
+      }
+
+      // Validate calculation result
+      if (outputAmount <= 0 || !isFinite(outputAmount)) {
+        throw new Error(`Invalid conversion result: ${outputAmount}`);
+      }
+
+      // Normalize target token symbol
+      let normalizedToToken = toToken;
+      if (normalizedToToken.startsWith('V') && normalizedToToken.length > 1) {
+        normalizedToToken = 'v' + normalizedToToken.substring(1);
+      } else if (!normalizedToToken.startsWith('v') && isToVToken) {
+        normalizedToToken = 'v' + normalizedToToken.toUpperCase();
+      } else if (!isToVToken) {
+        normalizedToToken = normalizedToToken.toUpperCase();
+      }
+
+      // Create result with enhanced precision handling
       const result: TokenAmount = {
         amount: outputAmount.toString(),
         decimals: 12, // Standard for Polkadot ecosystem
         token: {
-          symbol: toToken.toUpperCase(),
+          symbol: normalizedToToken,
           network: 'bifrost'
         },
         formattedAmount: this.formatAmount(outputAmount, 12)
@@ -772,9 +807,13 @@ class BifrostService {
 
     try {
       // Get base data from existing APIs
+      // Make stakingData optional to handle API failures gracefully
       const [siteData, stakingData] = await Promise.all([
         this.getSiteData(),
-        this.getStakingData()
+        this.getStakingData().catch(error => {
+          logger.warn('Staking API unavailable, proceeding without staking data', { error: error.message });
+          return null;
+        })
       ]);
 
       // Transform and enhance data
@@ -846,13 +885,15 @@ class BifrostService {
       // Get base data
       const [siteData, stakingData, exchangeRate] = await Promise.all([
         this.getSiteData(),
-        this.getStakingData(),
+        this.getStakingData().catch(error => {
+          return null;
+        }),
         this.getExchangeRate(symbol)
       ]);
 
       // Find token data
       const tokenSiteData = siteData[symbol];
-      const tokenStakingData = stakingData.supportedAssets.find(
+      const tokenStakingData = stakingData?.supportedAssets?.find(
         asset => asset.symbol === symbol
       );
 
@@ -894,7 +935,8 @@ class BifrostService {
     
     for (const symbol of Object.keys(siteData)) {
       if (symbol.startsWith('v') && symbol !== 'version') {
-        const stakingInfo = stakingData.supportedAssets.find((asset: any) => asset.symbol === symbol);
+        // Handle case when stakingData is null/undefined
+        const stakingInfo = stakingData?.supportedAssets?.find((asset: any) => asset.symbol === symbol);
         
         summaries.push({
           token: { symbol, network: 'bifrost' },
