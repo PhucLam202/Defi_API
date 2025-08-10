@@ -50,12 +50,24 @@ app.use(helmet({
   },
 }));
 
-// CORS configuration
+// CORS configuration - Railway deployment compatible
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? false : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  origin: process.env.NODE_ENV === 'production' 
+    ? [
+        /\.railway\.app$/,
+        /\.up\.railway\.app$/,
+        /^https:\/\/.*\.railway\.app$/,
+        'https://api.liquidsync.dev'
+      ]
+    : [
+        'http://localhost:3000', 
+        'http://127.0.0.1:3000',
+        'http://localhost:8080'
+      ],
   credentials: false,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+  optionsSuccessStatus: 200
 }));
 
 // Compression
