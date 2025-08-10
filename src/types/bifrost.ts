@@ -97,29 +97,50 @@ export interface ConvertRequest {
   amount: string;
   fromToken: string; // token symbol
   toToken: string; // token symbol  
-  network?: string;
-  slippageTolerance?: number; // percentage
 }
 
-// Convert response with detailed calculation info
+// Convert response with optimized structure for better readability
 export interface ConvertResponse {
   success: boolean;
   data: {
+    // Conversion summary - key information at a glance
+    conversion: {
+      from: {
+        amount: string; // Formatted amount (6 decimals)
+        symbol: string;
+        network: string;
+      };
+      to: {
+        amount: string; // Formatted amount (6 decimals)
+        symbol: string;
+        network: string;
+      };
+      rate: number; // Exchange rate used
+      effectiveRate: string; // Actual conversion rate (8 decimals)
+    };
+    
+    // Detailed token information
     input: TokenAmount;
     output: TokenAmount;
+    
+    // Exchange rate details
     exchangeRate: ExchangeRate;
+    
+    // Calculation metadata
     calculation: {
-      method: 'runtime_api' | 'frontend_api' | 'calculated';
+      method: 'bifrost_api' | 'site_api_calculated' | 'runtime_api';
       precision: number; // decimal precision used
       roundingApplied: boolean;
+      timestamp: string; // When calculation was performed
+      dataSource: string; // Original source identifier
     };
+    
+    // Optional features
     fees?: {
       swapFee: number;
       networkFee: number;
       total: number;
     };
-    slippage?: number;
-    minimumReceived?: TokenAmount;
     priceImpact?: number;
   };
   timestamp: string;
@@ -326,8 +347,6 @@ export interface ConvertQuery {
   amount: string;
   from: string; // fromToken
   to: string; // toToken
-  network?: string;
-  slippage?: string; // slippage tolerance percentage
   includesFees?: 'true' | 'false';
 }
 
@@ -973,5 +992,58 @@ export interface TechnicalInfo {
     documentation: string;
     examples: string;
   };
+}
+
+// ============================================================================
+// BIFROST TVL ENDPOINT TYPES
+// ============================================================================
+
+// Bifrost TVL token data
+export interface BifrostTvlToken {
+  symbol: string;
+  tvl: number; // Total Value Locked in USD
+  tvm: number; // Total Value Minted in USD
+  totalIssuance: number; // Total token issuance
+  holders: number; // Number of holders
+  apy: number; // Annual Percentage Yield
+  marketShare: number; // Percentage of total protocol TVL
+  price?: number; // Token price in USD
+}
+
+// Bifrost protocol summary
+export interface BifrostProtocolSummary {
+  name: string;
+  totalTvl: number; // Total protocol TVL in USD
+  totalAddresses: number; // Total unique addresses
+  totalRevenue: number; // Total protocol revenue
+  bncPrice?: number; // BNC token price
+}
+
+// TVL summary statistics  
+export interface BifrostTvlSummary {
+  topTokenByTvl: string; // Symbol of token with highest TVL
+  topTokenByHolders: string; // Symbol of token with most holders  
+  averageApy: number; // Average APY across all tokens
+  totalTokenCount: number; // Number of tokens
+  tvlDistribution: {
+    top3Percentage: number; // TVL percentage of top 3 tokens
+    concentration: number; // TVL concentration index
+  };
+}
+
+// Complete Bifrost TVL response
+export interface BifrostTvlResponse {
+  success: boolean;
+  data: {
+    protocol: BifrostProtocolSummary;
+    tokens: BifrostTvlToken[];
+    summary: BifrostTvlSummary;
+    metadata: {
+      lastUpdate: string;
+      dataSource: string;
+      cacheAge?: number; // seconds
+    };
+  };
+  timestamp: string;
 }
 

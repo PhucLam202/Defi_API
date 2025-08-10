@@ -147,10 +147,6 @@ curl -X GET "http://localhost:3000/api/v1/bifrost/convert?amount=100&from=vKSM&t
         name: "Stablecoins",
         description: "Comprehensive stablecoin ecosystem analytics"
       },
-      {
-        name: "vTokens Management",
-        description: "Comprehensive vToken management and analytics"
-      }
     ],
     externalDocs: {
       description: "Find more information and API guides",

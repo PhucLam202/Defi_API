@@ -429,19 +429,6 @@ router.get('/exchange-rates/:token', bifrostController.getExchangeRate.bind(bifr
  *         description: Target token symbol
  *         example: KSM
  *       - in: query
- *         name: network
- *         schema:
- *           type: string
- *           enum: [bifrost, moonbeam, astar, hydration, polkadx, moonriver]
- *         description: Network to use for conversion
- *         example: bifrost
- *       - in: query
- *         name: slippage
- *         schema:
- *           type: string
- *         description: Slippage tolerance percentage (0-100)
- *         example: "0.5"
- *       - in: query
  *         name: includesFees
  *         schema:
  *           type: string
@@ -462,8 +449,47 @@ router.get('/exchange-rates/:token', bifrostController.getExchangeRate.bind(bifr
  *                 data:
  *                   type: object
  *                   properties:
+ *                     conversion:
+ *                       type: object
+ *                       description: Conversion summary with key information
+ *                       properties:
+ *                         from:
+ *                           type: object
+ *                           properties:
+ *                             amount:
+ *                               type: string
+ *                               example: "100.000000"
+ *                               description: Formatted input amount (6 decimals)
+ *                             symbol:
+ *                               type: string
+ *                               example: vKSM
+ *                             network:
+ *                               type: string
+ *                               example: bifrost
+ *                         to:
+ *                           type: object
+ *                           properties:
+ *                             amount:
+ *                               type: string
+ *                               example: "92.340000"
+ *                               description: Formatted output amount (6 decimals)
+ *                             symbol:
+ *                               type: string
+ *                               example: KSM
+ *                             network:
+ *                               type: string
+ *                               example: bifrost
+ *                         rate:
+ *                           type: number
+ *                           example: 0.9234
+ *                           description: Exchange rate used
+ *                         effectiveRate:
+ *                           type: string
+ *                           example: "0.92340000"
+ *                           description: Actual conversion rate (8 decimals)
  *                     input:
  *                       type: object
+ *                       description: Detailed input token information
  *                       properties:
  *                         amount:
  *                           type: string
@@ -485,6 +511,7 @@ router.get('/exchange-rates/:token', bifrostController.getExchangeRate.bind(bifr
  *                           example: "100.00000000"
  *                     output:
  *                       type: object
+ *                       description: Detailed output token information
  *                       properties:
  *                         amount:
  *                           type: string
@@ -519,18 +546,30 @@ router.get('/exchange-rates/:token', bifrostController.getExchangeRate.bind(bifr
  *                           example: frontend_api
  *                     calculation:
  *                       type: object
+ *                       description: Calculation metadata
  *                       properties:
  *                         method:
  *                           type: string
- *                           example: frontend_api
+ *                           enum: [bifrost_api, site_api_calculated, runtime_api]
+ *                           example: bifrost_api
+ *                           description: Calculation method used (bifrost_api for exchangeRatio)
  *                         precision:
  *                           type: number
  *                           example: 12
  *                         roundingApplied:
  *                           type: boolean
  *                           example: false
+ *                         timestamp:
+ *                           type: string
+ *                           format: date-time
+ *                           example: "2024-01-01T12:00:00.000Z"
+ *                         dataSource:
+ *                           type: string
+ *                           example: runtime
+ *                           description: Original data source identifier
  *                     fees:
  *                       type: object
+ *                       description: Fee breakdown (optional)
  *                       properties:
  *                         swapFee:
  *                           type: number
@@ -541,18 +580,6 @@ router.get('/exchange-rates/:token', bifrostController.getExchangeRate.bind(bifr
  *                         total:
  *                           type: number
  *                           example: 0
- *                     slippage:
- *                       type: number
- *                       example: 0.5
- *                     minimumReceived:
- *                       type: object
- *                       properties:
- *                         amount:
- *                           type: string
- *                           example: "91.88"
- *                         formattedAmount:
- *                           type: string
- *                           example: "91.88000000"
  *                 timestamp:
  *                   type: string
  *                   format: date-time
@@ -630,6 +657,102 @@ router.get('/convert', bifrostController.convertTokenAmount.bind(bifrostControll
 /// - **Caching**: Service-level caching for performance
 router.get('/supported-tokens', bifrostController.getSupportedTokens.bind(bifrostController));
 
+/**
+ * @swagger
+ * /api/v1/bifrost/tvl:
+ *   get:
+ *     summary: Get comprehensive Bifrost protocol TVL data
+ *     tags: [Bifrost Protocol]
+ *     description: |
+ *       Retrieves comprehensive Total Value Locked (TVL) data for the Bifrost protocol
+ *       using official site API data. Includes overall protocol metrics, per-token breakdown,
+ *       and comparative analysis with market trends.
+ *     responses:
+ *       200:
+ *         description: Bifrost TVL data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     protocol:
+ *                       type: object
+ *                       properties:
+ *                         name:
+ *                           type: string
+ *                           example: "Bifrost"
+ *                         totalTvl:
+ *                           type: number
+ *                           example: 45000000
+ *                           description: Total TVL in USD
+ *                         totalAddresses:
+ *                           type: number
+ *                           example: 12500
+ *                         totalRevenue:
+ *                           type: number
+ *                           example: 850000
+ *                     tokens:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           symbol:
+ *                             type: string
+ *                             example: vDOT
+ *                           tvl:
+ *                             type: number
+ *                             example: 12500000
+ *                           tvm:
+ *                             type: number
+ *                             example: 11800000
+ *                           totalIssuance:
+ *                             type: number
+ *                             example: 950000
+ *                           holders:
+ *                             type: number
+ *                             example: 3200
+ *                           apy:
+ *                             type: number
+ *                             example: 15.42
+ *                           marketShare:
+ *                             type: number
+ *                             example: 27.8
+ *                     summary:
+ *                       type: object
+ *                       properties:
+ *                         topTokenByTvl:
+ *                           type: string
+ *                           example: vDOT
+ *                         averageApy:
+ *                           type: number
+ *                           example: 12.6
+ *                         totalTokenCount:
+ *                           type: number
+ *                           example: 11
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+/// **GET /tvl**
+/// Retrieves comprehensive Bifrost protocol TVL data
+/// - **Data Source**: Official Bifrost /api/site endpoint
+/// - **Features**: Protocol overview, per-token breakdown, market analysis
+/// - **Caching**: 5-minute TTL for performance
+/// - **Security**: Read-only endpoint with no user input
+router.get('/tvl', bifrostController.getBifrostTvl.bind(bifrostController));
+
 // ============================================================================
 // EXTENDED API ENDPOINTS
 // ============================================================================
@@ -638,7 +761,7 @@ router.get('/supported-tokens', bifrostController.getSupportedTokens.bind(bifros
  * @swagger
  * /api/v1/bifrost/vtokens:
  *   get:
- *     tags: [vTokens Management]
+ *     tags: [Bifrost Protocol]
  *     summary: Get comprehensive list of all vTokens
  *     description: |
  *       Retrieves a paginated list of all available vTokens with comprehensive metadata including:
@@ -746,7 +869,7 @@ router.get('/vtokens', bifrostController.getVTokens.bind(bifrostController));
  * @swagger
  * /api/v1/bifrost/vtokens/{symbol}:
  *   get:
- *     tags: [vTokens Management]
+ *     tags: [Bifrost Protocol]
  *     summary: Get detailed information for a specific vToken
  *     description: |
  *       Retrieves comprehensive information for a specific vToken including:
