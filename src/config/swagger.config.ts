@@ -4,116 +4,45 @@ const options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "🚀 LiquidSync API - DeFi Data Aggregation",
+      title: "LiquidSync API - DeFi Data Aggregation",
       version: "1.0.0",
-      description: `
-# Welcome to LiquidSync API
+      description: `# LiquidSync API - Next-Generation DeFi Data Aggregation Platform
 
-**Next-generation DeFi data aggregation bridging Polkadot & Ethereum ecosystems**
+##  Overview
 
-## 🌟 Project Overview
+**LiquidSync** is a cutting-edge, enterprise-grade DeFi data aggregation API that seamlessly bridges the **Polkadot parachain ecosystem** with **Ethereum liquid staking infrastructure**. Our platform empowers developers with real-time, normalized, and highly reliable data from the most prominent DeFi protocols in the blockchain space.
 
-LiquidSync is a comprehensive DeFi data aggregation API that bridges the gap between **Polkadot's parachain ecosystem** and **Ethereum's liquid staking infrastructure**. Our platform provides developers with real-time, normalized data from multiple protocols, enabling seamless integration of cross-chain DeFi functionality.
+## What We Offer
 
-### 🎯 Mission
-To democratize access to DeFi data across chains, empowering developers to build sophisticated applications without the complexity of managing multiple protocol integrations.
+### Multi-Chain Data Integration
+- **Polkadot Ecosystem**: Comprehensive data from parachains including Bifrost, Moonbeam, Acala, and more
+- **Ethereum Infrastructure**: Real-time liquid staking data from Lido, Rocket Pool, and other leading protocols
+- **Cross-Chain Intelligence**: Unified data layer across multiple blockchain networks
 
----
+### Protocol Coverage
+We aggregate data from **15+ top-tier DeFi protocols** including:
+- **Bifrost** - Liquid staking and parachain infrastructure
+- **Lido** - Ethereum liquid staking solutions
+- **Rocket Pool** - Decentralized staking protocol
+- **And many more** - Continuously expanding our ecosystem
 
-## 🔥 Key Features
+## Key Features
 
-### 🔗 Cross-Chain Data Aggregation
-- **Polkadot Ecosystem**: Bifrost, Acala, Moonbeam, Astar
-- **Ethereum LST**: Lido, Rocket Pool, Frax, Coinbase
-- **15+ protocols** with real-time synchronization
-- Unified data schema across all chains
+### Cross-Chain Yield Intelligence
+### LST Token Tracking
+### Exchange Rate Conversions
+### Stablecoin Analytics
 
-### 📊 Comprehensive Yield Intelligence
-- Real-time APY/APR calculations with detailed breakdown
-- Historical yield trends and performance analytics
-- Risk-adjusted returns with safety scores
-- Cross-chain yield comparison tools
+## Getting Started
 
-### 💰 Advanced Liquid Staking Focus
-- LST token tracking across chains (vDOT, stETH, rETH)
-- Staking derivative analytics with validator data
-- Liquid staking ratio and market dominance metrics
-- Cross-chain LST arbitrage opportunities
-
-### 🛠️ Developer-First Design
-- RESTful API with OpenAPI 3.0 specification
-- TypeScript SDK with full type safety
-- Real-time WebSocket feeds for live data
-- Comprehensive documentation with code examples
+1. **API Key**: Get your free API key from our dashboard
+2. **Documentation**: Explore our comprehensive API documentation
+3. **SDK Integration**: Use our TypeScript SDK for rapid development
+4. **Support**: 24/7 developer support and community assistance
 
 ---
 
-## 🚀 Quick Start
-
-### Essential Endpoints
-1. **Bifrost Yields**: \`GET /api/v1/bifrost/yields\` - Liquid staking yields data
-2. **Exchange Rates**: \`GET /api/v1/bifrost/exchange-rates/vKSM\` - vToken exchange rates
-3. **Token Conversion**: \`GET /api/v1/bifrost/convert?amount=100&from=vKSM&to=KSM\` - Convert tokens
-4. **All Stablecoins**: \`GET /api/v1/stablecoins\` - Comprehensive stablecoin data
-
-### Example Usage
-\`\`\`bash
-# Get Bifrost yields data
-curl -X GET "http://localhost:3000/api/v1/bifrost/yields" \\
-  -H "Accept: application/json"
-
-# Get vToken exchange rate
-curl -X GET "http://localhost:3000/api/v1/bifrost/exchange-rates/vKSM" \\
-  -H "Accept: application/json"
-
-# Convert vKSM to KSM
-curl -X GET "http://localhost:3000/api/v1/bifrost/convert?amount=100&from=vKSM&to=KSM" \\
-  -H "Accept: application/json"
-\`\`\`
-
----
-
-## 🏗️ Technical Architecture
-
-### Backend Stack
-- **Runtime**: Node.js 18+ with TypeScript
-- **Framework**: Express.js with comprehensive middleware
-- **Database**: PostgreSQL + Redis caching layer
-- **Processing**: Bull.js for background job processing
-- **Monitoring**: Prometheus + Grafana integration
-
-### Data Sources
-- Bifrost API • Ethereum RPCs • TheGraph Endpoints
-- CoinGecko Prices • DeFiLlama Data • Substrate RPCs
-
-### Caching Strategy
-- **Price Data**: 30-second cache
-- **Pool Data**: 2-minute cache
-- **Historical Data**: 1-hour cache
-- **Protocol Metadata**: 24-hour cache
-
----
-
-## 👥 Target Audience
-
-- **DeFi Application Developers** building yield farming platforms
-- **Portfolio Management Tools** requiring multi-chain data
-- **Institutional Players** needing reliable DeFi infrastructure
-- **Research Platforms** analyzing cross-chain yield opportunities
-- **Trading Bots** executing cross-chain arbitrage strategies
-
----
-
-## 📚 Additional Resources
-
-- **Interactive Documentation**: Available at \`/docs\` (this page)
-- **API Information**: Detailed specs at \`/api/info\`
-- **GitHub Repository**: [View Source Code](https://github.com/PhucLam202/defi-data-api)
-
----
-
-*Built with ❤️ for the DeFi community*
-      `,
+*Built with ❤️ for the DeFi community*`,
       contact: {
         name: "LiquidSync API Team",
         url: "https://github.com/PhucLam202/defi-data-api",
@@ -147,6 +76,20 @@ curl -X GET "http://localhost:3000/api/v1/bifrost/convert?amount=100&from=vKSM&t
         name: "Stablecoins",
         description: "Comprehensive stablecoin ecosystem analytics"
       },
+    ],
+    components: {
+      securitySchemes: {
+        ApiKeyAuth: {
+          type: "apiKey",
+          in: "header",
+          name: "X-API-KEY"
+        }
+      }
+    },
+    security: [
+      {
+        ApiKeyAuth: []
+      }
     ],
     externalDocs: {
       description: "Find more information and API guides",
