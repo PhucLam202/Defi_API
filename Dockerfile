@@ -1,5 +1,8 @@
-# Use Node.js 2020 LTS Alpine for smaller image size
+# Use Node.js 20 LTS Alpine for smaller image size
 FROM node:20-alpine
+
+# Install curl for health check
+RUN apk add --no-cache curl
 
 # Set working directory
 WORKDIR /app
@@ -8,14 +11,17 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install all dependencies (needed for build)
+RUN npm install
 
 # Copy source code  
 COPY src/ ./src/
 
 # Build TypeScript
-RUN pnpm run build
+RUN npm run build
+
+# Clean dev dependencies after build
+RUN npm install --only=production && npm cache clean --force
 
 # Expose the port
 EXPOSE 3000
@@ -24,5 +30,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3000/ || exit 1
 
-# Start the application
-CMD ["pnpm", "start"]
+# Start the application (skip prestart script since build is already done)
+CMD ["node", "dist/server.js"]
