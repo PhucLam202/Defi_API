@@ -4,111 +4,45 @@ const options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "🚀 LiquidSync API - DeFi Data Aggregation",
+      title: "LiquidSync API - DeFi Data Aggregation",
       version: "1.0.0",
-      description: `
-# Welcome to LiquidSync API
+      description: `# LiquidSync API - Next-Generation DeFi Data Aggregation Platform
 
-**Next-generation DeFi data aggregation bridging Polkadot & Ethereum ecosystems**
+##  Overview
 
-## 🌟 Project Overview
+**LiquidSync** is a cutting-edge, enterprise-grade DeFi data aggregation API that seamlessly bridges the **Polkadot parachain ecosystem** with **Ethereum liquid staking infrastructure**. Our platform empowers developers with real-time, normalized, and highly reliable data from the most prominent DeFi protocols in the blockchain space.
 
-LiquidSync is a comprehensive DeFi data aggregation API that bridges the gap between **Polkadot's parachain ecosystem** and **Ethereum's liquid staking infrastructure**. Our platform provides developers with real-time, normalized data from multiple protocols, enabling seamless integration of cross-chain DeFi functionality.
+## What We Offer
 
-### 🎯 Mission
-To democratize access to DeFi data across chains, empowering developers to build sophisticated applications without the complexity of managing multiple protocol integrations.
+### Multi-Chain Data Integration
+- **Polkadot Ecosystem**: Comprehensive data from parachains including Bifrost, Moonbeam, Acala, and more
+- **Ethereum Infrastructure**: Real-time liquid staking data from Lido, Rocket Pool, and other leading protocols
+- **Cross-Chain Intelligence**: Unified data layer across multiple blockchain networks
 
----
+### Protocol Coverage
+We aggregate data from **15+ top-tier DeFi protocols** including:
+- **Bifrost** - Liquid staking and parachain infrastructure
+- **Lido** - Ethereum liquid staking solutions
+- **Rocket Pool** - Decentralized staking protocol
+- **And many more** - Continuously expanding our ecosystem
 
-## 🔥 Key Features
+## Key Features
 
-### 🔗 Cross-Chain Data Aggregation
-- **Polkadot Ecosystem**: Bifrost, Acala, Moonbeam, Astar
-- **Ethereum LST**: Lido, Rocket Pool, Frax, Coinbase
-- **15+ protocols** with real-time synchronization
-- Unified data schema across all chains
+### Cross-Chain Yield Intelligence
+### LST Token Tracking
+### Exchange Rate Conversions
+### Stablecoin Analytics
 
-### 📊 Comprehensive Yield Intelligence
-- Real-time APY/APR calculations with detailed breakdown
-- Historical yield trends and performance analytics
-- Risk-adjusted returns with safety scores
-- Cross-chain yield comparison tools
+## Getting Started
 
-### 💰 Advanced Liquid Staking Focus
-- LST token tracking across chains (vDOT, stETH, rETH)
-- Staking derivative analytics with validator data
-- Liquid staking ratio and market dominance metrics
-- Cross-chain LST arbitrage opportunities
-
-### 🛠️ Developer-First Design
-- RESTful API with OpenAPI 3.0 specification
-- TypeScript SDK with full type safety
-- Real-time WebSocket feeds for live data
-- Comprehensive documentation with code examples
+1. **API Key**: Get your free API key from our dashboard
+2. **Documentation**: Explore our comprehensive API documentation
+3. **SDK Integration**: Use our TypeScript SDK for rapid development
+4. **Support**: 24/7 developer support and community assistance
 
 ---
 
-## 🚀 Quick Start
-
-### Essential Endpoints
-1. **All Stablecoins**: \`GET /api/v1/stablecoins\` - Comprehensive stablecoin data
-2. **Stablecoin by Symbol**: \`GET /api/v1/stablecoins/symbol/USDT\` - Specific token info
-3. **Yield Data**: \`GET /api/v1/yields\` - Cross-chain yield opportunities
-
-### Example Usage
-\`\`\`bash
-# Get all stablecoins with market data
-curl -X GET "http://localhost:3000/api/v1/stablecoins" \\
-  -H "Accept: application/json"
-
-# Get specific stablecoin by symbol
-curl -X GET "http://localhost:3000/api/v1/stablecoins/symbol/USDT" \\
-  -H "Accept: application/json"
-\`\`\`
-
----
-
-## 🏗️ Technical Architecture
-
-### Backend Stack
-- **Runtime**: Node.js 18+ with TypeScript
-- **Framework**: Express.js with comprehensive middleware
-- **Database**: PostgreSQL + Redis caching layer
-- **Processing**: Bull.js for background job processing
-- **Monitoring**: Prometheus + Grafana integration
-
-### Data Sources
-- Bifrost API • Ethereum RPCs • TheGraph Endpoints
-- CoinGecko Prices • DeFiLlama Data • Substrate RPCs
-
-### Caching Strategy
-- **Price Data**: 30-second cache
-- **Pool Data**: 2-minute cache
-- **Historical Data**: 1-hour cache
-- **Protocol Metadata**: 24-hour cache
-
----
-
-## 👥 Target Audience
-
-- **DeFi Application Developers** building yield farming platforms
-- **Portfolio Management Tools** requiring multi-chain data
-- **Institutional Players** needing reliable DeFi infrastructure
-- **Research Platforms** analyzing cross-chain yield opportunities
-- **Trading Bots** executing cross-chain arbitrage strategies
-
----
-
-## 📚 Additional Resources
-
-- **Interactive Documentation**: Available at \`/docs\` (this page)
-- **API Information**: Detailed specs at \`/api/info\`
-- **GitHub Repository**: [View Source Code](https://github.com/PhucLam202/defi-data-api)
-
----
-
-*Built with ❤️ for the DeFi community*
-      `,
+*Built with ❤️ for the DeFi community*`,
       contact: {
         name: "LiquidSync API Team",
         url: "https://github.com/PhucLam202/defi-data-api",
@@ -119,18 +53,40 @@ curl -X GET "http://localhost:3000/api/v1/stablecoins/symbol/USDT" \\
         url: "https://opensource.org/licenses/MIT"
       }
     },
+    servers: [
+      {
+        url: process.env.NODE_ENV === 'production' 
+          ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` 
+          : `http://localhost:${process.env.PORT || 3000}`,
+        description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
+      }
+    ],
     tags: [
       {
+        name: "Bifrost Protocol",
+        description: "Complete Bifrost liquid staking protocol API including yields data and vToken exchange rates with conversion services"
+      },
+      {
+        name: "TVL",
+        description: "Total Value Locked analytics and blockchain ecosystem analysis"
+      },
+      {
         name: "Stablecoins",
-        description: "Comprehensive stablecoin data across multiple chains with market analytics, circulation data, and risk metrics"
+        description: "Comprehensive stablecoin ecosystem analytics"
       },
+    ],
+    components: {
+      securitySchemes: {
+        ApiKeyAuth: {
+          type: "apiKey",
+          in: "header",
+          name: "X-API-KEY"
+        }
+      }
+    },
+    security: [
       {
-        name: "Yields",
-        description: "Cross-chain yield data and DeFi protocol analytics"
-      },
-      {
-        name: "Analytics",
-        description: "Advanced analytics and market intelligence"
+        ApiKeyAuth: []
       }
     ],
     externalDocs: {
@@ -138,7 +94,12 @@ curl -X GET "http://localhost:3000/api/v1/stablecoins/symbol/USDT" \\
       url: "https://github.com/PhucLam202/defi-data-api"
     }
   },
-  apis: ["./src/routes/**/*.ts", "./src/controllers/**/*.ts"],
+  apis: [
+    "./src/routes/**/*.ts",
+    "./src/routes/**/*.js", 
+    "./src/controllers/**/*.ts",
+    "./src/controllers/**/*.js"
+  ],
 };
 
-export const specs = swaggerJSDoc(options);
+export const openapiSpecification = swaggerJSDoc(options);

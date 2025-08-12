@@ -29,6 +29,7 @@ export enum ErrorCode {
   INVALID_INPUT = 4000,
   QUOTA_EXCEEDED = 4001,
   RATE_LIMITED = 4002,
+  EXTERNAL_API_ERROR = 4003,
   
   // AI/ML Related Errors
   INVALID_AI_RESPONSE = 5000,

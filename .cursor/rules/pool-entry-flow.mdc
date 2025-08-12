@@ -1,0 +1,29 @@
+# pool-entry-flow
+
+## Tech Stack:
+- Backend: Node.js with Express.js
+- Database: MongoDB with Mongoose ODM
+- Frontend: React.js (admin panel optional)
+- Authentication: JWT
+- Deployment: Docker (optional)
+
+## User Flow:
+1. User can submit up to 3 Requests per Pool
+2. Requests must be approved and paid before becoming Entries
+3. Each user can have up to 3 Entries (numbered 1, 2, 3)
+4. Picks made per Entry, updatable until game deadline
+
+## Scoring Logic:
+- Win → Entry continues
+- Loss → Entry eliminated
+- Entries ranked per Pool
+
+## Admin Rules:
+- Admin approves/rejects Requests
+- On approval + payment → convert to Entry
+- Track Request status: pending → approved → entry_created
+
+## Implementation Notes:
+- Use JWT auth
+- Enforce RESTful API practices
+- Input validation, error handling
