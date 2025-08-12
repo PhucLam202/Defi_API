@@ -1,3 +1,29 @@
+/// # Stablecoin Data Aggregation Service
+/// 
+/// Comprehensive service for fetching, processing, and analyzing stablecoin data
+/// from DeFiLlama's stablecoin API. Provides market analytics, risk assessment,
+/// and stability metrics for the entire stablecoin ecosystem.
+/// 
+/// ## Core Features:
+/// - **Data Aggregation**: Fetches and normalizes data from DeFiLlama API
+/// - **Security Hardening**: Comprehensive input sanitization and validation
+/// - **Risk Assessment**: Algorithmic risk level calculation and stability metrics
+/// - **Performance Optimization**: Intelligent caching with 5-minute TTL
+/// - **Chain Analysis**: Cross-chain stablecoin circulation tracking
+/// - **Growth Analytics**: Historical growth rate calculations
+/// 
+/// ## Security Model:
+/// - **API Response Sanitization**: All external data is validated and sanitized
+/// - **Input Validation**: Strict type checking and length limits
+/// - **DoS Protection**: Request timeouts, size limits, and connection security
+/// - **HTTPS Security**: TLS 1.2+ with secure cipher suites
+/// - **Cache Management**: Memory-safe caching with automatic cleanup
+/// 
+/// ## Data Sources:
+/// - **Primary**: DeFiLlama Stablecoins API (https://stablecoins.llama.fi)
+/// - **Fallback**: Cached data for high availability
+/// - **Update Frequency**: 5-minute cache TTL for real-time accuracy
+
 import axios from 'axios';
 import { logger } from '../utils/logger.js';
 import { 
@@ -9,27 +35,68 @@ import {
 } from '../types/index.js';
 import { AppError } from '../middleware/e/AppError.js';
 import { ErrorCode } from '../middleware/e/ErrorCode.js';
+import https from 'https';
 
+/// ## StablecoinService Class
+/// 
+/// Main service class for stablecoin data operations with enterprise-grade
+/// security and performance optimizations.
+/// 
+/// ### Architecture:
+/// - **Data Source**: DeFiLlama Stablecoins API
+/// - **Caching Strategy**: In-memory cache with 5-minute TTL
+/// - **Security Model**: Multi-layer validation and sanitization
+/// - **Error Handling**: Graceful fallback to cached data
 class StablecoinService {
+  /// DeFiLlama Stablecoins API base URL (HTTPS-only for security)
   private readonly baseUrl = 'https://stablecoins.llama.fi';
+  
+  /// In-memory cache for API responses with timestamp tracking
+  /// **Structure**: Map<cacheKey, {data: sanitized_response, timestamp: number}>
+  /// **TTL**: 5 minutes for balance between freshness and performance
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
+  
+  /// Cache Time-To-Live in seconds (5 minutes)
+  /// **Rationale**: Stablecoin data changes frequently but not second-by-second
   private readonly cacheTtl = 300; // 5 minutes
 
+  /// ## Cache Validation Method
+  /// 
+  /// Checks if cached data is still valid based on TTL.
+  /// 
+  /// **@param {string} cacheKey** - Unique identifier for cached data
+  /// **@returns {boolean}** - true if cache is valid, false if expired
+  /// **@performance** O(1) - Constant time cache lookup
   private isValidCache(cacheKey: string): boolean {
     const cached = this.cache.get(cacheKey);
-    if (!cached) return false;
+    if (!cached) return false; // Cache miss
     
     const now = Date.now();
-    return (now - cached.timestamp) < this.cacheTtl * 1000;
+    return (now - cached.timestamp) < this.cacheTtl * 1000; // TTL check
   }
 
+  /// ## Cache Storage Method
+  /// 
+  /// Stores sanitized data in cache with current timestamp.
+  /// 
+  /// **@param {string} cacheKey** - Unique identifier for the data
+  /// **@param {any} data** - Sanitized data to cache
+  /// **@security** Only sanitized data should be cached
+  /// **@performance** O(1) - Direct Map.set operation
   private setCache(cacheKey: string, data: any): void {
     this.cache.set(cacheKey, {
       data,
-      timestamp: Date.now()
+      timestamp: Date.now() // Current timestamp for TTL validation
     });
   }
 
+  /// ## Cache Retrieval Method
+  /// 
+  /// Retrieves data from cache without TTL validation.
+  /// 
+  /// **@param {string} cacheKey** - Unique identifier for the data
+  /// **@returns {any}** - Cached data or undefined if not found
+  /// **@performance** O(1) - Direct Map.get with optional chaining
   private getCache(cacheKey: string): any {
     return this.cache.get(cacheKey)?.data;
   }
@@ -150,10 +217,10 @@ class StablecoinService {
           includePrices: 'true'
         },
         // Enhanced security options
-        httpsAgent: new (require('https').Agent)({
-          rejectUnauthorized: true, // Validate SSL certificates
-          secureProtocol: 'TLSv1_2_method', // Use TLS 1.2 minimum
-          ciphers: 'HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA' // Strong ciphers only
+        httpsAgent: new https.Agent({
+          rejectUnauthorized: true,
+          secureProtocol: 'TLSv1_2_method',
+          ciphers: 'HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA'
         })
       });
 

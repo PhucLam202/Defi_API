@@ -1,7 +1,62 @@
+/// # Stablecoin Ecosystem Routes
+/// 
+/// Comprehensive route definitions for stablecoin ecosystem data endpoints.
+/// Provides access to market analytics, risk assessment, and cross-chain
+/// stablecoin circulation data with enterprise-grade security.
+/// 
+/// ## Route Responsibilities:
+/// - **Market Data Access**: Comprehensive stablecoin market information
+/// - **Risk Assessment**: Stability metrics and depegging monitoring
+/// - **Cross-Chain Analytics**: Blockchain-specific circulation data
+/// - **Market Intelligence**: Top performers and ecosystem analytics
+/// 
+/// ## Security Features:
+/// - Rate limiting on all endpoints to prevent API abuse
+/// - Comprehensive input validation and sanitization
+/// - Parameter bounds checking and format validation
+/// - DoS protection through result set limits
+/// 
+/// ## Performance Optimizations:
+/// - Intelligent caching with 5-minute TTL
+/// - Conditional data inclusion (chain data optional)
+/// - Optimized sorting and filtering algorithms
+/// - Pagination support for large datasets
+/// 
+/// ## Endpoint Categories:
+/// 
+/// ### Core Data Access:
+/// ```
+/// GET /                   - List all stablecoins with filtering
+/// GET /symbol/{symbol}    - Get stablecoin by symbol
+/// GET /id/{id}           - Get stablecoin by ID
+/// ```
+/// 
+/// ### Analytics & Intelligence:
+/// ```
+/// GET /analytics         - Market analytics and breakdowns
+/// GET /top              - Top stablecoins by market cap
+/// GET /depegged         - Risk monitoring for depegged tokens
+/// ```
+/// 
+/// ### Cross-Chain Analysis:
+/// ```
+/// GET /chain/{chain}     - Blockchain-specific stablecoin data
+/// ```
+
 import express from 'express';
 import { stablecoinController } from '../../controllers/stablecoinController.js';
 import { rateLimitMiddleware } from '../../middleware/rateLimiter.js';
 
+/// ## Stablecoin Router Configuration
+/// 
+/// Creates router instance for stablecoin ecosystem endpoints with
+/// rate limiting, controller delegation, and comprehensive Swagger documentation.
+/// 
+/// ### Middleware Stack:
+/// 1. **Rate Limiting**: Applied to all endpoints for API protection
+/// 2. **Input Validation**: Handled by individual controllers
+/// 3. **Error Handling**: Centralized error middleware
+/// 4. **Response Formatting**: Standardized API responses
 const router: express.Router = express.Router();
 
 /**
@@ -189,6 +244,12 @@ const router: express.Router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+/// **GET /**
+/// Retrieves all stablecoins with advanced filtering and pagination
+/// - **Security**: Rate limiting, comprehensive input validation
+/// - **Features**: Filter by peg type, mechanism, market cap, chain
+/// - **Performance**: Optimized sorting, conditional chain data inclusion
+/// - **Pagination**: Configurable limits (1-100) with bounds checking
 router.get('/', rateLimitMiddleware, stablecoinController.getStablecoins);
 
 /**
@@ -230,6 +291,12 @@ router.get('/', rateLimitMiddleware, stablecoinController.getStablecoins);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+/// **GET /symbol/{symbol}**
+/// Retrieves stablecoin data by symbol with format validation
+/// - **Security**: Symbol sanitization, alphanumeric validation
+/// - **Features**: Case-insensitive symbol matching
+/// - **Validation**: 20-character limit, injection protection
+/// - **Response**: Complete stablecoin asset with risk metrics
 router.get('/symbol/:symbol', rateLimitMiddleware, stablecoinController.getStablecoinBySymbol);
 
 /**
@@ -271,6 +338,12 @@ router.get('/symbol/:symbol', rateLimitMiddleware, stablecoinController.getStabl
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+/// **GET /id/{id}**
+/// Retrieves stablecoin data by unique identifier
+/// - **Security**: ID sanitization, 50-character limit
+/// - **Features**: Supports complex IDs (e.g., "dai-dai-stablecoin")
+/// - **Validation**: Alphanumeric validation, injection protection
+/// - **Response**: Complete stablecoin asset with all metadata
 router.get('/id/:id', rateLimitMiddleware, stablecoinController.getStablecoinById);
 
 /**
@@ -351,6 +424,12 @@ router.get('/id/:id', rateLimitMiddleware, stablecoinController.getStablecoinByI
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+/// **GET /chain/{chain}**
+/// Retrieves stablecoins on specific blockchain with chain-focused analytics
+/// - **Security**: Chain name sanitization and validation
+/// - **Features**: Multi-level chain name matching, circulation totals
+/// - **Analytics**: Chain-specific metrics, sorted by circulation
+/// - **Response**: Simplified format focused on chain relevance
 router.get('/chain/:chain', rateLimitMiddleware, stablecoinController.getStablecoinsByChain);
 
 /**
@@ -392,6 +471,12 @@ router.get('/chain/:chain', rateLimitMiddleware, stablecoinController.getStablec
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+/// **GET /analytics**
+/// Comprehensive stablecoin ecosystem analytics and market intelligence
+/// - **Security**: Read-only endpoint, no user input validation needed
+/// - **Features**: Market cap breakdown, mechanism analysis, chain distribution
+/// - **Analytics**: Stability metrics, risk distribution, growth rates
+/// - **Performance**: Cached calculations with intelligent aggregation
 router.get('/analytics', rateLimitMiddleware, stablecoinController.getAnalytics);
 
 /**
@@ -429,6 +514,12 @@ router.get('/analytics', rateLimitMiddleware, stablecoinController.getAnalytics)
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+/// **GET /top**
+/// Top stablecoins ranked by market capitalization
+/// - **Security**: Limit validation (1-50), bounds checking
+/// - **Features**: Automatic market cap sorting, clean response format
+/// - **Performance**: Optimized for ranking, removes chain data
+/// - **Use Cases**: Dashboard widgets, market overview displays
 router.get('/top', rateLimitMiddleware, stablecoinController.getTopStablecoins);
 
 /**
@@ -467,6 +558,12 @@ router.get('/top', rateLimitMiddleware, stablecoinController.getTopStablecoins);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+/// **GET /depegged**
+/// Risk monitoring endpoint for stablecoins that have lost their peg
+/// - **Security**: Threshold validation (0-100%), parameter sanitization
+/// - **Features**: Configurable stability threshold, worst-first sorting
+/// - **Risk Management**: Optimized for monitoring and alert systems
+/// - **Use Cases**: Risk dashboards, depegging alerts, portfolio analysis
 router.get('/depegged', rateLimitMiddleware, stablecoinController.getDepeggedStablecoins);
 
 export default router;

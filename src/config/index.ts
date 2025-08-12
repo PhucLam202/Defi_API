@@ -3,12 +3,12 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const config = {
-  port: process.env.PORT || 3000,
+  port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV,
   apiVersion: process.env.API_VERSION,
   
   // External APIs
-  bifrostApiUrl: process.env.BIFROST_API_URL,
+  bifrostApiUrl: process.env.BIFROST_API_URL || 'https://dapi.bifrost.io/api',
 
   // Security
   jwtSecret: process.env.JWT_SECRET,
