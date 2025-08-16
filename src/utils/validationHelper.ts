@@ -38,7 +38,8 @@ export class ValidationHelper {
     'optimism', 'fantom', 'solana', 'terra', 'cosmos',
     'near', 'flow', 'cardano', 'polkadot', 'kusama',
     'moonbeam', 'moonriver', 'aurora', 'harmony', 'celo',
-    'binance-smart-chain'
+    'binance-smart-chain', 'eth', 'dot', 'btc', 'sol', 
+    'avax', 'matic', 'bnb', 'ada', 'link'
   ];
 
   private static supportedChains = [
@@ -54,7 +55,14 @@ export class ValidationHelper {
     'avax': 'avalanche',
     'arb': 'arbitrum',
     'op': 'optimism',
-    'ftm': 'fantom'
+    'ftm': 'fantom',
+    'dot': 'polkadot',
+    'btc': 'bitcoin',
+    'matic': 'polygon',
+    'bnb': 'binance-smart-chain',
+    'ada': 'cardano',
+    'link': 'chainlink',
+    'celo': 'celo'
   };
 
   /**
@@ -145,9 +153,8 @@ export class ValidationHelper {
     // Validate minimum TVL
     const minTvl = this.validateMinTvl(query.minTvl, errors);
     
-    // Validate categories and chains
+    // Validate categories
     const categories = this.validateCategories(query.categories, errors);
-    const chains = this.validateChains(query.chains, errors);
     const limit = this.validateLimit(query.limit, errors, 30, 1, 30);
 
     if (errors.length > 0) {
@@ -162,7 +169,6 @@ export class ValidationHelper {
       timeframes,
       minTvl,
       categories,
-      chains,
       limit
     };
 
@@ -212,7 +218,6 @@ export class ValidationHelper {
     const chain = this.normalizeChainName(query.chain, errors);
     
     // Standard parameter validation
-    const detail = this.validateDetailLevel(query.detail, errors);
     const limit = this.validateLimit(query.limit, errors, 50, 1, 100);
     const sortBy = this.validateSortBy(
       query.sortBy,
@@ -233,7 +238,6 @@ export class ValidationHelper {
 
     const validatedQuery: ChainEcosystemOptions = {
       chain,
-      detail,
       limit,
       sortBy,
       categories
@@ -423,6 +427,9 @@ export class ValidationHelper {
       errors.push('chains must be a string or array');
       return undefined;
     }
+
+    // Apply chain aliases
+    chainArray = chainArray.map(c => (this.chainAliases as any)[c] || c);
 
     // Remove duplicates and limit to 10 chains
     chainArray = [...new Set(chainArray)].slice(0, 10);

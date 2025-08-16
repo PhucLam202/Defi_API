@@ -165,32 +165,16 @@ const router: express.Router = express.Router();
  *     tags: [Stablecoins]
  *     parameters:
  *       - in: query
- *         name: pegType
+ *         name: chains
  *         schema:
- *           type: string
- *         description: Filter by peg type (USD, EUR, GBP)
- *       - in: query
- *         name: mechanism
- *         schema:
- *           type: string
- *         description: Filter by peg mechanism
- *       - in: query
- *         name: minMarketCap
- *         schema:
- *           type: number
- *         description: Minimum market cap filter
- *       - in: query
- *         name: chain
- *         schema:
- *           type: string
- *         description: Filter by blockchain
- *       - in: query
- *         name: sortBy
- *         schema:
- *           type: string
- *           enum: [id, marketCap, stability, growth, name]
- *           default: id
- *         description: Sort field
+ *           type: array
+ *           items:
+ *             type: string
+ *             enum: [ETH, Celo, DOT, BTC, SOL, AVAX, MATIC, BNB, ADA, LINK]
+ *         style: form
+ *         explode: false
+ *         description: Filter by blockchain networks
+ *         example: ["ETH", "AVAX"]
  *       - in: query
  *         name: sortOrder
  *         schema:
@@ -199,24 +183,12 @@ const router: express.Router = express.Router();
  *           default: asc
  *         description: Sort order
  *       - in: query
- *         name: includeChainData
- *         schema:
- *           type: boolean
- *           default: false
- *         description: Include chain circulation data
- *       - in: query
  *         name: limit
  *         schema:
  *           type: number
  *           default: 50
  *           maximum: 100
  *         description: Number of results per page
- *       - in: query
- *         name: offset
- *         schema:
- *           type: number
- *           default: 0
- *         description: Number of results to skip
  *     responses:
  *       200:
  *         description: List of stablecoins
@@ -265,7 +237,22 @@ router.get('/', rateLimitMiddleware, stablecoinController.getStablecoins);
  *         schema:
  *           type: string
  *         description: Stablecoin symbol
- *         example: USDT
+ *         examples:
+ *           usdt:
+ *             value: USDT
+ *             summary: Tether USD
+ *           usdc:
+ *             value: USDC
+ *             summary: USD Coin
+ *           busd:
+ *             value: BUSD
+ *             summary: Binance USD
+ *           dai:
+ *             value: DAI
+ *             summary: Dai Stablecoin
+ *           frax:
+ *             value: FRAX
+ *             summary: Frax
  *     responses:
  *       200:
  *         description: Stablecoin details
@@ -350,7 +337,7 @@ router.get('/id/:id', rateLimitMiddleware, stablecoinController.getStablecoinByI
  * @swagger
  * /api/v1/stablecoins/chain/{chain}:
  *   get:
- *     summary: Get stablecoins by blockchain with chain-focused data structure
+ *     summary: Get stablecoins by blockchain networks with chain-focused data structure
  *     tags: [Stablecoins]
  *     parameters:
  *       - in: path
@@ -358,8 +345,20 @@ router.get('/id/:id', rateLimitMiddleware, stablecoinController.getStablecoinByI
  *         required: true
  *         schema:
  *           type: string
- *         description: Blockchain name
- *         example: ethereum
+ *         description: Blockchain network(s) - supports single chain or comma-separated multiple chains
+ *         examples:
+ *           ethereum:
+ *             value: ETH
+ *             summary: Single Ethereum network
+ *           multi_chain:
+ *             value: "ETH,AVAX,MATIC"
+ *             summary: Multiple networks (comma-separated)
+ *           polkadot:
+ *             value: DOT
+ *             summary: Single Polkadot network
+ *           with_spaces:
+ *             value: "ETH, Celo"
+ *             summary: Multiple networks with spaces (will be parsed correctly)
  *     responses:
  *       200:
  *         description: Chain-focused stablecoin data showing circulation on the specified chain
@@ -425,9 +424,9 @@ router.get('/id/:id', rateLimitMiddleware, stablecoinController.getStablecoinByI
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 /// **GET /chain/{chain}**
-/// Retrieves stablecoins on specific blockchain with chain-focused analytics
+/// Retrieves stablecoins on specific blockchain networks with chain-focused analytics
 /// - **Security**: Chain name sanitization and validation
-/// - **Features**: Multi-level chain name matching, circulation totals
+/// - **Features**: Multi-level chain name matching, circulation totals, comma-separated multi-chain support
 /// - **Analytics**: Chain-specific metrics, sorted by circulation
 /// - **Response**: Simplified format focused on chain relevance
 router.get('/chain/:chain', rateLimitMiddleware, stablecoinController.getStablecoinsByChain);
@@ -436,7 +435,33 @@ router.get('/chain/:chain', rateLimitMiddleware, stablecoinController.getStablec
  * @swagger
  * /api/v1/stablecoins/analytics:
  *   get:
- *     summary: Get stablecoin market analytics
+ *     summary: Get comprehensive stablecoin market analytics and intelligence
+ *     description: |
+ *       Retrieves in-depth market analytics for the entire stablecoin ecosystem including:
+ *       
+ *       **Market Overview:**
+ *       - Total market capitalization across all stablecoins
+ *       - Count of active stablecoins in the ecosystem
+ *       - Market concentration and diversity metrics
+ *       
+ *       **Peg Mechanism Analysis:**
+ *       - Distribution by backing type (fiat-backed, crypto-backed, algorithmic)
+ *       - Market share percentage for each mechanism
+ *       - Risk assessment by mechanism type
+ *       
+ *       **Cross-Chain Distribution:**
+ *       - Circulation breakdown by blockchain network
+ *       - Chain dominance and market share analysis
+ *       - Multi-chain adoption patterns
+ *       
+ *       **Stability & Risk Metrics:**
+ *       - Average peg stability across all stablecoins
+ *       - Count and analysis of depegged tokens
+ *       - Risk level distribution (low/medium/high)
+ *       - Volatility trends and stability indicators
+ *       
+ *       This endpoint provides essential data for market research, risk assessment, 
+ *       and strategic analysis of the stablecoin landscape.
  *     tags: [Stablecoins]
  *     responses:
  *       200:
@@ -483,7 +508,36 @@ router.get('/analytics', rateLimitMiddleware, stablecoinController.getAnalytics)
  * @swagger
  * /api/v1/stablecoins/top:
  *   get:
- *     summary: Get top stablecoins by market cap
+ *     summary: Get top-performing stablecoins ranked by market capitalization
+ *     description: |
+ *       Retrieves the highest market cap stablecoins with comprehensive ranking data:
+ *       
+ *       **Ranking Methodology:**
+ *       - Sorted by total market capitalization (highest first)
+ *       - Real-time market cap calculations
+ *       - Verified circulation and pricing data
+ *       
+ *       **Key Metrics Included:**
+ *       - Current market capitalization in USD
+ *       - Peg stability percentage (deviation from target)
+ *       - Risk assessment level (low/medium/high)
+ *       - Price accuracy and peg maintenance
+ *       - Growth rates (daily, weekly, monthly)
+ *       
+ *       **Use Cases:**
+ *       - Portfolio analysis and asset selection
+ *       - Market dominance tracking
+ *       - Investment research and due diligence
+ *       - Dashboard and widget integration
+ *       - Competitive analysis for protocols
+ *       
+ *       **Data Quality:**
+ *       - Excludes detailed chain circulation for optimal performance
+ *       - Focus on essential ranking and comparison metrics
+ *       - Configurable result limits (1-50 stablecoins)
+ *       
+ *       Perfect for applications requiring quick access to market leaders
+ *       and trending stablecoins in the DeFi ecosystem.
  *     tags: [Stablecoins]
  *     parameters:
  *       - in: query
@@ -526,7 +580,42 @@ router.get('/top', rateLimitMiddleware, stablecoinController.getTopStablecoins);
  * @swagger
  * /api/v1/stablecoins/depegged:
  *   get:
- *     summary: Get depegged stablecoins
+ *     summary: Get stablecoins that have lost their peg - Critical risk monitoring
+ *     description: |
+ *       **Risk Monitoring Endpoint** - Identifies stablecoins that have deviated from their intended peg:
+ *       
+ *       **Risk Assessment Features:**
+ *       - Configurable stability threshold (default: 99% peg maintenance)
+ *       - Real-time peg deviation detection
+ *       - Priority sorting (worst stability first for immediate attention)
+ *       - Historical stability tracking
+ *       
+ *       **Critical Use Cases:**
+ *       - **Risk Management:** Portfolio risk assessment and exposure analysis
+ *       - **Alert Systems:** Automated depegging notifications and warnings
+ *       - **Market Monitoring:** Real-time stability surveillance for traders
+ *       - **Due Diligence:** Pre-investment stability analysis
+ *       - **Protocol Safety:** DeFi protocol risk management integration
+ *       
+ *       **Key Stability Metrics:**
+ *       - Current peg stability percentage (deviation from target value)
+ *       - Risk level classification (low/medium/high)
+ *       - Market capitalization impact assessment
+ *       - Price volatility and recovery patterns
+ *       
+ *       **Threshold Configuration:**
+ *       - Adjustable stability threshold (0-100%)
+ *       - Default 99% threshold captures meaningful depegging events
+ *       - Lower thresholds for more sensitive monitoring
+ *       - Higher thresholds for only severe depegging cases
+ *       
+ *       **Data Optimization:**
+ *       - Streamlined response excludes chain circulation details
+ *       - Focus on essential risk metrics for rapid analysis
+ *       - Sorted by stability (worst performers first)
+ *       
+ *       **Critical for:** Risk managers, traders, DeFi protocols, and anyone 
+ *       requiring real-time stablecoin stability monitoring and depegging alerts.
  *     tags: [Stablecoins]
  *     parameters:
  *       - in: query
