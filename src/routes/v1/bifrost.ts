@@ -787,28 +787,6 @@ router.get('/tvl', bifrostController.getBifrostTvl.bind(bifrostController));
  *           default: 20
  *         description: Number of items per page
  *       - in: query
- *         name: network
- *         schema:
- *           type: array
- *           items:
- *             type: string
- *         description: Filter by network (bifrost, polkadot, kusama, etc.)
- *       - in: query
- *         name: minApy
- *         schema:
- *           type: number
- *         description: Minimum APY filter
- *       - in: query
- *         name: maxApy
- *         schema:
- *           type: number
- *         description: Maximum APY filter
- *       - in: query
- *         name: minTvl
- *         schema:
- *           type: number
- *         description: Minimum TVL filter (USD)
- *       - in: query
  *         name: sortBy
  *         schema:
  *           type: string
@@ -822,18 +800,6 @@ router.get('/tvl', bifrostController.getBifrostTvl.bind(bifrostController));
  *           enum: [asc, desc]
  *           default: desc
  *         description: Sort order
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [active, paused, deprecated]
- *         description: Filter by token status
- *       - in: query
- *         name: riskLevel
- *         schema:
- *           type: string
- *           enum: [low, medium, high]
- *         description: Filter by risk level
  *     responses:
  *       200:
  *         description: vTokens list retrieved successfully
@@ -852,13 +818,8 @@ router.get('/tvl', bifrostController.getBifrostTvl.bind(bifrostController));
 /// 
 /// **Query Parameters**:
 /// - `page`, `limit`: Pagination controls (limit max 100)
-/// - `network`: Filter by network (array support)
-/// - `minApy`, `maxApy`: APY range filtering
-/// - `minTvl`: TVL minimum threshold
 /// - `sortBy`: apy|tvl|volume|holders|name
 /// - `sortOrder`: asc|desc
-/// - `status`: active|paused|deprecated
-/// - `riskLevel`: low|medium|high
 /// 
 /// **Security**: Multi-layer query validation and sanitization
 /// **Features**: Ecosystem summary, network status, pagination metadata

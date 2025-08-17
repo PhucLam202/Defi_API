@@ -264,7 +264,6 @@ export interface TrendingOptions {
   timeframes: ('24h' | '7d' | '30d')[];
   minTvl: number;
   categories?: string[];
-  chains?: string[];
   limit: number;
 }
 
@@ -573,7 +572,6 @@ export interface MarketDistribution {
 // Query Options
 export interface ChainEcosystemOptions {
   chain: string;
-  detail: 'minimal' | 'basic' | 'full';
   limit: number;
   sortBy: 'tvl' | 'growth' | 'marketShare' | 'name';
   categories?: string[];

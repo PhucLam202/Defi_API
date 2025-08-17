@@ -152,13 +152,6 @@ const controller = createMarketIntelligenceController(
  * 
  *     parameters:
  *       - in: query
- *         name: detail
- *         schema:
- *           type: string
- *           enum: [minimal, basic, full]
- *           default: basic
- *         description: Response detail level
- *       - in: query
  *         name: timeframe
  *         schema:
  *           type: string
@@ -166,17 +159,16 @@ const controller = createMarketIntelligenceController(
  *           default: 7d
  *         description: Analysis timeframe for growth calculations
  *       - in: query
- *         name: categories
- *         schema:
- *           type: string
- *         description: Comma-separated list of DeFi categories to filter
- *         example: "dex,lending,liquid-staking"
- *       - in: query
  *         name: chains
  *         schema:
- *           type: string
- *         description: Comma-separated list of blockchain networks to filter
- *         example: "ethereum,arbitrum,optimism"
+ *           type: array
+ *           items:
+ *             type: string
+ *             enum: [ETH, Celo, DOT, BTC, SOL, AVAX, MATIC, BNB, ADA, LINK]
+ *         style: form
+ *         explode: false
+ *         description: Array of individual blockchain networks to filter
+ *         example: ["ETH", "DOT", "SOL"]
  *       - in: query
  *         name: limit
  *         schema:
@@ -314,13 +306,6 @@ router.get('/overview', controller.getMarketOverview);
  * 
  *     parameters:
  *       - in: query
- *         name: detail
- *         schema:
- *           type: string
- *           enum: [minimal, basic, full]
- *           default: basic
- *         description: Response detail level
- *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
@@ -418,22 +403,11 @@ router.get('/dominance', controller.getMarketDominance);
  *         explode: false
  *         description: Array of timeframes for analysis
  *       - in: query
- *         name: minTvl
- *         schema:
- *           type: number
- *           minimum: 0
- *           default: 1000000
- *         description: Minimum TVL threshold for inclusion
- *       - in: query
- *         name: categories
+ *         name: category
  *         schema:
  *           type: string
- *         description: Comma-separated list of categories to filter
- *       - in: query
- *         name: chains
- *         schema:
- *           type: string
- *         description: Comma-separated list of chains to filter
+ *           enum: [dex, lending, liquid-staking, yield-farming, derivatives, insurance, payments, assets, options, cross-chain, staking, nft, gaming, dao, launchpad, prediction-market, perpetuals, synthetics, bridge, index-funds]
+ *         description: DeFi category to filter trending protocols
  *       - in: query
  *         name: limit
  *         schema:
@@ -599,6 +573,7 @@ router.get('/movers', controller.getMarketMovers);
  *                       diversityIndex: 0.42
  */
 router.get('/chains/overview', controller.getChainsOverview);
+router.get('/chainTVL', controller.getChainsOverview);
 
 /**
  * @swagger
@@ -634,14 +609,6 @@ router.get('/chains/overview', controller.getChainsOverview);
  *             ]
  *         example: ethereum
  *         description: Blockchain identifier or alias
- * 
- *       - name: detail
- *         in: query
- *         schema:
- *           type: string
- *           enum: [minimal, basic, full]
- *           default: basic
- *         description: Response detail level
  * 
  *       - name: limit
  *         in: query
