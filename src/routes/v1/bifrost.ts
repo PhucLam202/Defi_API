@@ -203,7 +203,22 @@ router.get('/yields', bifrostController.getYields.bind(bifrostController));
  *         description: Token symbol (e.g., vDOT, vKSM)
  *         schema:
  *           type: string
- *         example: vDOT
+ *         examples:
+ *           vDOT:
+ *             value: vDOT
+ *             summary: Polkadot liquid staking token
+ *           vKSM:
+ *             value: vKSM
+ *             summary: Kusama liquid staking token
+ *           vBNC:
+ *             value: vBNC
+ *             summary: Bifrost native token
+ *           vETH:
+ *             value: vETH
+ *             summary: Ethereum liquid staking token
+ *           vASTR:
+ *             value: vASTR
+ *             summary: Astar liquid staking token
  *     responses:
  *       200:
  *         description: Yield data for specific token
@@ -264,7 +279,22 @@ router.get('/yields/:symbol', bifrostController.getYieldBySymbol.bind(bifrostCon
  *         schema:
  *           type: string
  *         description: vToken symbol (e.g., vKSM, vDOT)
- *         example: vKSM
+ *         examples:
+ *           vDOT:
+ *             value: vDOT
+ *             summary: Polkadot liquid staking token
+ *           vKSM:
+ *             value: vKSM
+ *             summary: Kusama liquid staking token
+ *           vBNC:
+ *             value: vBNC
+ *             summary: Bifrost native token
+ *           vETH:
+ *             value: vETH
+ *             summary: Ethereum liquid staking token
+ *           vASTR:
+ *             value: vASTR
+ *             summary: Astar liquid staking token
  *       - in: query
  *         name: includeHistory
  *         schema:
@@ -793,13 +823,6 @@ router.get('/tvl', bifrostController.getBifrostTvl.bind(bifrostController));
  *           enum: [apy, tvl, volume, holders, name]
  *           default: tvl
  *         description: Sort field
- *       - in: query
- *         name: sortOrder
- *         schema:
- *           type: string
- *           enum: [asc, desc]
- *           default: desc
- *         description: Sort order
  *     responses:
  *       200:
  *         description: vTokens list retrieved successfully
@@ -847,6 +870,22 @@ router.get('/vtokens', bifrostController.getVTokens.bind(bifrostController));
  *           type: string
  *           pattern: '^[A-Z0-9]{2,10}$'
  *         description: vToken symbol (e.g., vKSM, vDOT)
+ *         examples:
+ *           vDOT:
+ *             value: vDOT
+ *             summary: Polkadot liquid staking token
+ *           vKSM:
+ *             value: vKSM
+ *             summary: Kusama liquid staking token
+ *           vBNC:
+ *             value: vBNC
+ *             summary: Bifrost native token
+ *           vETH:
+ *             value: vETH
+ *             summary: Ethereum liquid staking token
+ *           vASTR:
+ *             value: vASTR
+ *             summary: Astar liquid staking token
  *     responses:
  *       200:
  *         description: vToken details retrieved successfully

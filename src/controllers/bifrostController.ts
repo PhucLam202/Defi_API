@@ -553,51 +553,28 @@ export class BifrostController {
       const {
         page = 1,
         limit = 20,
-        network,
-        minApy,
-        maxApy,
         minTvl,
-        sortBy = 'tvl',
-        sortOrder = 'desc',
-        status,
-        riskLevel
+        sortBy = 'tvl'
       } = req.query;
 
       // Validate parameters
       const pageNum = Math.max(1, parseInt(page as string) || 1);
       const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 20));
-      const minApyNum = minApy ? parseFloat(minApy as string) : undefined;
-      const maxApyNum = maxApy ? parseFloat(maxApy as string) : undefined;
       const minTvlNum = minTvl ? parseFloat(minTvl as string) : undefined;
 
       // Validate sort parameters
       const validSortFields = ['apy', 'tvl', 'volume', 'holders', 'name'];
-      const validSortOrders = ['asc', 'desc'];
       
       if (!validSortFields.includes(sortBy as string)) {
         throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid sortBy parameter');
       }
       
-      if (!validSortOrders.includes(sortOrder as string)) {
-        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid sortOrder parameter');
-      }
-
-      // Build filter options with proper type casting
-      const networkArray = network ? 
-        (Array.isArray(network) ? network.map(n => String(n)) : [String(network)]) : 
-        undefined;
-      
       const filterOptions = {
         page: pageNum,
         limit: limitNum,
-        network: networkArray,
-        minApy: minApyNum,
-        maxApy: maxApyNum,
         minTvl: minTvlNum,
         sortBy: sortBy as string,
-        sortOrder: sortOrder as string,
-        status: status as string,
-        riskLevel: riskLevel as string
+        sortOrder: 'desc' // Fixed to desc for consistent ordering
       };
 
       // Get vTokens data from service
@@ -660,7 +637,9 @@ export class BifrostController {
       // Clean and validate symbol
       const cleanSymbol = symbol.trim().toUpperCase();
       if (!/^[A-Z0-9]{2,10}$/.test(cleanSymbol)) {
-        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 'Invalid symbol format');
+        throw AppError.newError400(ErrorCode.VALIDATION_ERROR, 
+          `Invalid symbol format. Symbol must be 2-10 characters (letters and numbers only). ` +
+          `Examples: vDOT, vKSM, vBNC, vETH, DOT, KSM. Received: "${symbol}"`);
       }
 
       // Auto-convert base tokens to vTokens for user convenience
