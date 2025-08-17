@@ -35,7 +35,6 @@
 /// ```
 /// GET /analytics         - Market analytics and breakdowns
 /// GET /top              - Top stablecoins by market cap
-/// GET /depegged         - Risk monitoring for depegged tokens
 /// ```
 /// 
 /// ### Cross-Chain Analysis:
@@ -337,7 +336,10 @@ router.get('/id/:id', rateLimitMiddleware, stablecoinController.getStablecoinByI
  * @swagger
  * /api/v1/stablecoins/chain/{chain}:
  *   get:
- *     summary: Get stablecoins by blockchain networks with chain-focused data structure
+ *     summary: Get stablecoins by blockchain network
+ *     description: |
+ *       Retrieves stablecoins available on specific blockchain networks with
+ *       circulation data, protocol count, and chain-specific metrics.
  *     tags: [Stablecoins]
  *     parameters:
  *       - in: path
@@ -435,37 +437,15 @@ router.get('/chain/:chain', rateLimitMiddleware, stablecoinController.getStablec
  * @swagger
  * /api/v1/stablecoins/analytics:
  *   get:
+ *     tags: [Stablecoins]
  *     summary: Get comprehensive stablecoin market analytics and intelligence
  *     description: |
- *       Retrieves in-depth market analytics for the entire stablecoin ecosystem including:
- *       
- *       **Market Overview:**
- *       - Total market capitalization across all stablecoins
- *       - Count of active stablecoins in the ecosystem
- *       - Market concentration and diversity metrics
- *       
- *       **Peg Mechanism Analysis:**
- *       - Distribution by backing type (fiat-backed, crypto-backed, algorithmic)
- *       - Market share percentage for each mechanism
- *       - Risk assessment by mechanism type
- *       
- *       **Cross-Chain Distribution:**
- *       - Circulation breakdown by blockchain network
- *       - Chain dominance and market share analysis
- *       - Multi-chain adoption patterns
- *       
- *       **Stability & Risk Metrics:**
- *       - Average peg stability across all stablecoins
- *       - Count and analysis of depegged tokens
- *       - Risk level distribution (low/medium/high)
- *       - Volatility trends and stability indicators
- *       
- *       This endpoint provides essential data for market research, risk assessment, 
- *       and strategic analysis of the stablecoin landscape.
- *     tags: [Stablecoins]
+ *       Provides comprehensive market analytics for the entire stablecoin ecosystem with
+ *       mechanism breakdown, chain distribution, and stability metrics.
+ * 
  *     responses:
  *       200:
- *         description: Comprehensive stablecoin market analytics
+ *         description: Comprehensive stablecoin market analytics retrieved successfully
  *         content:
  *           application/json:
  *             schema:
@@ -478,19 +458,132 @@ router.get('/chain/:chain', rateLimitMiddleware, stablecoinController.getStablec
  *                       properties:
  *                         totalMarketCap:
  *                           type: number
+ *                           description: Total market capitalization across all stablecoins in USD
+ *                           example: 150000000000
  *                         totalStablecoins:
  *                           type: number
+ *                           description: Total number of active stablecoins tracked
+ *                           example: 89
  *                         mechanismBreakdown:
  *                           type: object
+ *                           description: Distribution by peg mechanism type
+ *                           properties:
+ *                             fiatBacked:
+ *                               type: object
+ *                               properties:
+ *                                 count:
+ *                                   type: number
+ *                                   example: 45
+ *                                 marketShare:
+ *                                   type: number
+ *                                   example: 78.5
+ *                                 totalValue:
+ *                                   type: number
+ *                                   example: 117750000000
+ *                             cryptoBacked:
+ *                               type: object
+ *                               properties:
+ *                                 count:
+ *                                   type: number
+ *                                   example: 28
+ *                                 marketShare:
+ *                                   type: number
+ *                                   example: 15.2
+ *                             algorithmic:
+ *                               type: object
+ *                               properties:
+ *                                 count:
+ *                                   type: number
+ *                                   example: 16
+ *                                 marketShare:
+ *                                   type: number
+ *                                   example: 6.3
  *                         chainBreakdown:
  *                           type: object
+ *                           description: Cross-chain circulation distribution
+ *                           properties:
+ *                             ethereum:
+ *                               type: object
+ *                               properties:
+ *                                 circulation:
+ *                                   type: number
+ *                                   example: 95000000000
+ *                                 dominancePercentage:
+ *                                   type: number
+ *                                   example: 63.3
+ *                                 protocolCount:
+ *                                   type: number
+ *                                   example: 67
  *                         stabilityMetrics:
  *                           type: object
+ *                           description: Ecosystem-wide stability and risk metrics
+ *                           properties:
+ *                             averageStability:
+ *                               type: number
+ *                               description: Average peg stability percentage
+ *                               example: 99.2
+ *                             riskDistribution:
+ *                               type: object
+ *                               properties:
+ *                                 low:
+ *                                   type: number
+ *                                   example: 72
+ *                                 medium:
+ *                                   type: number
+ *                                   example: 14
+ *                                 high:
+ *                                   type: number
+ *                                   example: 3
+ *                             depeggedCount:
+ *                               type: number
+ *                               description: Number of stablecoins below 99% stability
+ *                               example: 5
  *                         updatedAt:
  *                           type: string
  *                           format: date-time
+ *                           description: Last update timestamp
+ *                           example: "2024-01-15T10:30:00Z"
+ *             examples:
+ *               comprehensive_analytics:
+ *                 summary: Complete market analytics response
+ *                 value:
+ *                   success: true
+ *                   data:
+ *                     totalMarketCap: 150000000000
+ *                     totalStablecoins: 89
+ *                     mechanismBreakdown:
+ *                       fiatBacked:
+ *                         count: 45
+ *                         marketShare: 78.5
+ *                         totalValue: 117750000000
+ *                       cryptoBacked:
+ *                         count: 28
+ *                         marketShare: 15.2
+ *                         totalValue: 22800000000
+ *                       algorithmic:
+ *                         count: 16
+ *                         marketShare: 6.3
+ *                         totalValue: 9450000000
+ *                     chainBreakdown:
+ *                       ethereum:
+ *                         circulation: 95000000000
+ *                         dominancePercentage: 63.3
+ *                         protocolCount: 67
+ *                       binanceSmartChain:
+ *                         circulation: 25000000000
+ *                         dominancePercentage: 16.7
+ *                         protocolCount: 23
+ *                     stabilityMetrics:
+ *                       averageStability: 99.2
+ *                       riskDistribution:
+ *                         low: 72
+ *                         medium: 14
+ *                         high: 3
+ *                       depeggedCount: 5
+ *                     updatedAt: "2024-01-15T10:30:00Z"
+ *                   timestamp: "2024-01-15T10:30:00Z"
  *       500:
- *         description: Server error
+ *         description: Internal server error
  *         content:
  *           application/json:
  *             schema:
@@ -508,48 +601,26 @@ router.get('/analytics', rateLimitMiddleware, stablecoinController.getAnalytics)
  * @swagger
  * /api/v1/stablecoins/top:
  *   get:
+ *     tags: [Stablecoins]
  *     summary: Get top-performing stablecoins ranked by market capitalization
  *     description: |
- *       Retrieves the highest market cap stablecoins with comprehensive ranking data:
- *       
- *       **Ranking Methodology:**
- *       - Sorted by total market capitalization (highest first)
- *       - Real-time market cap calculations
- *       - Verified circulation and pricing data
- *       
- *       **Key Metrics Included:**
- *       - Current market capitalization in USD
- *       - Peg stability percentage (deviation from target)
- *       - Risk assessment level (low/medium/high)
- *       - Price accuracy and peg maintenance
- *       - Growth rates (daily, weekly, monthly)
- *       
- *       **Use Cases:**
- *       - Portfolio analysis and asset selection
- *       - Market dominance tracking
- *       - Investment research and due diligence
- *       - Dashboard and widget integration
- *       - Competitive analysis for protocols
- *       
- *       **Data Quality:**
- *       - Excludes detailed chain circulation for optimal performance
- *       - Focus on essential ranking and comparison metrics
- *       - Configurable result limits (1-50 stablecoins)
- *       
- *       Perfect for applications requiring quick access to market leaders
- *       and trending stablecoins in the DeFi ecosystem.
- *     tags: [Stablecoins]
+ *       Retrieves top-performing stablecoins ranked by market capitalization with
+ *       stability metrics, risk assessment, and growth data.
+ * 
  *     parameters:
  *       - in: query
  *         name: limit
  *         schema:
  *           type: number
- *           default: 10
+ *           minimum: 1
  *           maximum: 50
- *         description: Number of top stablecoins to return
+ *           default: 10
+ *         description: Number of top stablecoins to return in ranking
+ *         example: 20
+ * 
  *     responses:
  *       200:
- *         description: Top stablecoins by market capitalization
+ *         description: Top stablecoins ranking retrieved successfully
  *         content:
  *           application/json:
  *             schema:
@@ -559,10 +630,158 @@ router.get('/analytics', rateLimitMiddleware, stablecoinController.getAnalytics)
  *                   properties:
  *                     data:
  *                       type: array
+ *                       description: Array of top stablecoins ranked by market capitalization
  *                       items:
- *                         $ref: '#/components/schemas/StablecoinAsset'
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             description: Unique stablecoin identifier
+ *                             example: "tether"
+ *                           name:
+ *                             type: string
+ *                             description: Full stablecoin name
+ *                             example: "Tether USD"
+ *                           symbol:
+ *                             type: string
+ *                             description: Trading symbol
+ *                             example: "USDT"
+ *                           marketCap:
+ *                             type: number
+ *                             description: Total market capitalization in USD
+ *                             example: 83000000000
+ *                           price:
+ *                             type: number
+ *                             description: Current price in USD
+ *                             example: 1.001
+ *                           pegStability:
+ *                             type: number
+ *                             description: Peg stability percentage (0-100)
+ *                             example: 99.9
+ *                           riskLevel:
+ *                             type: string
+ *                             enum: [low, medium, high]
+ *                             description: Risk classification
+ *                             example: "low"
+ *                           pegType:
+ *                             type: string
+ *                             description: Peg currency type
+ *                             example: "USD"
+ *                           pegMechanism:
+ *                             type: string
+ *                             description: Mechanism maintaining peg
+ *                             example: "fiat-backed"
+ *                           chains:
+ *                             type: array
+ *                             items:
+ *                               type: string
+ *                             description: Supported blockchain networks
+ *                             example: ["ethereum", "tron", "avalanche"]
+ *                           growthRates:
+ *                             type: object
+ *                             description: Growth metrics across timeframes
+ *                             properties:
+ *                               daily:
+ *                                 type: number
+ *                                 description: 24-hour growth percentage
+ *                                 example: 0.6
+ *                               weekly:
+ *                                 type: number
+ *                                 description: 7-day growth percentage
+ *                                 example: 2.5
+ *                               monthly:
+ *                                 type: number
+ *                                 description: 30-day growth percentage
+ *                                 example: 3.8
+ *                           updatedAt:
+ *                             type: string
+ *                             format: date-time
+ *                             description: Last data update timestamp
+ *                             example: "2024-01-15T10:30:00Z"
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: number
+ *                           example: 1
+ *                         limit:
+ *                           type: number
+ *                           example: 10
+ *                         total:
+ *                           type: number
+ *                           example: 10
+ *             examples:
+ *               top_stablecoins_ranking:
+ *                 summary: Top 3 stablecoins by market cap
+ *                 value:
+ *                   success: true
+ *                   data:
+ *                     - id: "tether"
+ *                       name: "Tether USD"
+ *                       symbol: "USDT"
+ *                       marketCap: 83000000000
+ *                       price: 1.001
+ *                       pegStability: 99.9
+ *                       riskLevel: "low"
+ *                       pegType: "USD"
+ *                       pegMechanism: "fiat-backed"
+ *                       chains: ["ethereum", "tron", "avalanche"]
+ *                       growthRates:
+ *                         daily: 0.6
+ *                         weekly: 2.5
+ *                         monthly: 3.8
+ *                       updatedAt: "2024-01-15T10:30:00Z"
+ *                     - id: "usd-coin"
+ *                       name: "USD Coin"
+ *                       symbol: "USDC"
+ *                       marketCap: 28000000000
+ *                       price: 1.000
+ *                       pegStability: 99.95
+ *                       riskLevel: "low"
+ *                       pegType: "USD"
+ *                       pegMechanism: "fiat-backed"
+ *                       chains: ["ethereum", "solana", "polygon"]
+ *                       growthRates:
+ *                         daily: -0.2
+ *                         weekly: 1.8
+ *                         monthly: 2.1
+ *                       updatedAt: "2024-01-15T10:30:00Z"
+ *                     - id: "dai"
+ *                       name: "Dai Stablecoin"
+ *                       symbol: "DAI"
+ *                       marketCap: 5200000000
+ *                       price: 0.999
+ *                       pegStability: 99.8
+ *                       riskLevel: "medium"
+ *                       pegType: "USD"
+ *                       pegMechanism: "crypto-backed"
+ *                       chains: ["ethereum", "polygon"]
+ *                       growthRates:
+ *                         daily: 1.2
+ *                         weekly: 4.5
+ *                         monthly: 8.2
+ *                       updatedAt: "2024-01-15T10:30:00Z"
+ *                   pagination:
+ *                     page: 1
+ *                     limit: 10
+ *                     total: 10
+ *                   timestamp: "2024-01-15T10:30:00Z"
  *       400:
  *         description: Invalid limit parameter
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               invalid_limit:
+ *                 summary: Invalid limit parameter error
+ *                 value:
+ *                   success: false
+ *                   error: "Invalid limit parameter. Must be between 1 and 50"
+ *                   code: "VALIDATION_ERROR"
+ *                   timestamp: "2024-01-15T10:30:00Z"
+ *       500:
+ *         description: Internal server error
  *         content:
  *           application/json:
  *             schema:
@@ -576,83 +795,5 @@ router.get('/analytics', rateLimitMiddleware, stablecoinController.getAnalytics)
 /// - **Use Cases**: Dashboard widgets, market overview displays
 router.get('/top', rateLimitMiddleware, stablecoinController.getTopStablecoins);
 
-/**
- * @swagger
- * /api/v1/stablecoins/depegged:
- *   get:
- *     summary: Get stablecoins that have lost their peg - Critical risk monitoring
- *     description: |
- *       **Risk Monitoring Endpoint** - Identifies stablecoins that have deviated from their intended peg:
- *       
- *       **Risk Assessment Features:**
- *       - Configurable stability threshold (default: 99% peg maintenance)
- *       - Real-time peg deviation detection
- *       - Priority sorting (worst stability first for immediate attention)
- *       - Historical stability tracking
- *       
- *       **Critical Use Cases:**
- *       - **Risk Management:** Portfolio risk assessment and exposure analysis
- *       - **Alert Systems:** Automated depegging notifications and warnings
- *       - **Market Monitoring:** Real-time stability surveillance for traders
- *       - **Due Diligence:** Pre-investment stability analysis
- *       - **Protocol Safety:** DeFi protocol risk management integration
- *       
- *       **Key Stability Metrics:**
- *       - Current peg stability percentage (deviation from target value)
- *       - Risk level classification (low/medium/high)
- *       - Market capitalization impact assessment
- *       - Price volatility and recovery patterns
- *       
- *       **Threshold Configuration:**
- *       - Adjustable stability threshold (0-100%)
- *       - Default 99% threshold captures meaningful depegging events
- *       - Lower thresholds for more sensitive monitoring
- *       - Higher thresholds for only severe depegging cases
- *       
- *       **Data Optimization:**
- *       - Streamlined response excludes chain circulation details
- *       - Focus on essential risk metrics for rapid analysis
- *       - Sorted by stability (worst performers first)
- *       
- *       **Critical for:** Risk managers, traders, DeFi protocols, and anyone 
- *       requiring real-time stablecoin stability monitoring and depegging alerts.
- *     tags: [Stablecoins]
- *     parameters:
- *       - in: query
- *         name: threshold
- *         schema:
- *           type: number
- *           default: 99
- *           minimum: 0
- *           maximum: 100
- *         description: Stability threshold percentage
- *     responses:
- *       200:
- *         description: List of depegged stablecoins
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/ApiResponse'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/StablecoinAsset'
- *       400:
- *         description: Invalid threshold parameter
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-/// **GET /depegged**
-/// Risk monitoring endpoint for stablecoins that have lost their peg
-/// - **Security**: Threshold validation (0-100%), parameter sanitization
-/// - **Features**: Configurable stability threshold, worst-first sorting
-/// - **Risk Management**: Optimized for monitoring and alert systems
-/// - **Use Cases**: Risk dashboards, depegging alerts, portfolio analysis
-router.get('/depegged', rateLimitMiddleware, stablecoinController.getDepeggedStablecoins);
 
 export default router;
